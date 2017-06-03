@@ -1,4 +1,8 @@
 {
 	"saveFile": "./users.json",
-	"saveIntervalMins": "5"
+	"saveIntervalMins": "5",
+	"daysInactive": "30",
+	"checkActivityIntervalDays": "1",
+	"serverID": "264420391282409473",
+	"activeRoleID": "320687855607480340"
 }
