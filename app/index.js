@@ -23,7 +23,12 @@ module.exports = (_config) => {
 
 	this.onMessage = (bot, user, userID, channelID, message) => {
 		users[userID] = new Date(); //save this message as the user's last active date
-		Console.log(users);
+		if (!bot.servers[config.serverID].members[userID].roles.includes(config.activeRoleID))
+			bot.addToRole({
+				serverID: config.serverID,
+				userID: userID,
+				roleID: config.activeRoleID
+			}, (err, response) => { if (err) Console.error(err, response); });
 	};
 
 	return this;
@@ -31,7 +36,7 @@ module.exports = (_config) => {
 
 var writeToFile = () => {
 	JsonFile.writeFile(config.saveFile, users, (err) => { if (err) Console.error(err); });
-	let saveIntervalMs = config.saveIntervalMins * 60 * 1000;	
+	let saveIntervalMs = config.saveIntervalMins * 60 * 1000;
 	setTimeout(writeToFile, saveIntervalMs);
 };
 
