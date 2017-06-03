@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "discord.io": "2.5.1"
+    "discord.io": "2.5.1",
+    "jsonfile": "3.0.0"
   }
 }
