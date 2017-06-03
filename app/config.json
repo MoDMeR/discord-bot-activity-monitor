@@ -1,3 +1,4 @@
 {
-	"saveFile": "./users.json"
+	"saveFile": "./users.json",
+	"saveIntervalMins": "5"
 }
