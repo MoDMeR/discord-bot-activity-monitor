@@ -9,8 +9,8 @@ var DateDiff = require("date-diff");
 var users = {};
 var config;
 
-module.exports = (_config) => {
-	config = _config || require("./config.json");
+module.exports = (_config = require("./config.json")) => {
+	config = _config;
 
 	this.onReady = (bot) => {
 		if (fs.existsSync(config.saveFile))
@@ -31,6 +31,15 @@ module.exports = (_config) => {
 			}, (err, response) => { if (err) Console.error(err, response); });
 	};
 
+	this.commands = [
+		{
+			command: config.checkNowCommand,
+			type: "equals",
+			action: (bot) => { checkUsersAgainstThreshold(bot, false); },
+			userIDs: config.developers
+		}
+	];
+
 	return this;
 };
 
@@ -44,7 +53,7 @@ var checkUsersAgainstThreshold = (bot, doSetTimeout = true) => {
 	var now = new Date(); //get current date
 	var inactiveThresholdDays = parseInt(config.inactiveThresholdDays); //get an integer for the number of days a user must have been inactive for before the role is removed
 	Object.keys(users).forEach(userID => { //iterate over the user IDs
-		var diff = new DateDiff(now, users[userID]); //calculate the difference between the current date and the last time the user was active
+		var diff = new DateDiff(now, Date.parse(users[userID])); //calculate the difference between the current date and the last time the user was active
 
 		//remove the "active" role from the user if they haven't been active within the threshold, give them it if they have
 		if (diff.days() > inactiveThresholdDays)
