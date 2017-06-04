@@ -64,12 +64,15 @@ var checkUsersAgainstThreshold = (bot, doSetTimeout = true) => {
 		var diff = new DateDiff(now, Date.parse(users[userID])); //calculate the difference between the current date and the last time the user was active
 
 		//remove the "active" role from the user if they haven't been active within the threshold, give them it if they have
-		if (diff.days() > inactiveThresholdDays)
+		if (diff.days() > inactiveThresholdDays) {
 			bot.removeFromRole({
 				serverID: config.serverID,
 				userID: userID,
 				roleID: config.activeRoleID
 			}, (err, response) => { if (err) Console.error(err, response); });
+
+			delete users[userID]; //un-save the user's last active time, as they don't matter anymore
+		}
 		else
 			bot.addToRole({
 				serverID: config.serverID,
