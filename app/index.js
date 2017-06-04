@@ -15,7 +15,6 @@ module.exports = (_config = require("./config.json")) => {
 	this.onReady = (bot) => {
 		if (fs.existsSync(config.saveFile))
 			users = JsonFile.readFileSync(config.saveFile); //load any data we already have stored
-		Console.log(users);
 
 		writeToFile();
 		checkUsersAgainstThreshold(bot);
