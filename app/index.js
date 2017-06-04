@@ -45,13 +45,13 @@ module.exports = (_config = require("./config.json")) => {
 
 var writeToFile = () => {
 	JsonFile.writeFile(config.saveFile, users, (err) => { if (err) Console.error(err); });
-	let saveIntervalMs = config.saveIntervalMins * 60 * 1000;
+	let saveIntervalMs = parseFloat(config.saveIntervalMins) * 60 * 1000;
 	setTimeout(writeToFile, saveIntervalMs);
 };
 
 var checkUsersAgainstThreshold = (bot, doSetTimeout = true) => {
 	var now = new Date(); //get current date
-	var inactiveThresholdDays = parseInt(config.inactiveThresholdDays); //get an integer for the number of days a user must have been inactive for before the role is removed
+	var inactiveThresholdDays = parseFloat(config.inactiveThresholdDays); //get an integer for the number of days a user must have been inactive for before the role is removed
 	Object.keys(users).forEach(userID => { //iterate over the user IDs
 		var diff = new DateDiff(now, Date.parse(users[userID])); //calculate the difference between the current date and the last time the user was active
 
@@ -72,7 +72,7 @@ var checkUsersAgainstThreshold = (bot, doSetTimeout = true) => {
 
 	//set the timeout to wait before this function should recur
 	if (doSetTimeout) {
-		var waitMs = parseInt(config.checkActivityIntervalDays) * 24 * 60 * 60 * 1000;
+		var waitMs = (parseFloat(config.checkActivityIntervalDays)) * 24 * 60 * 60 * 1000;
 		setTimeout(() => { checkUsersAgainstThreshold(bot); }, waitMs);
 	}
 };
