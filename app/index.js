@@ -18,16 +18,15 @@ module.exports = (_config = require("./config.json")) => {
 
 		writeToFile();
 		checkUsersAgainstThreshold(bot);
+
+		bot.on("any", event => {
+			if (isChannelJoinEvent(event))
+				onActivity(bot, event.d.user_id);
+		});
 	};
 
 	this.onMessage = (bot, user, userID, channelID, message) => {
-		users[userID] = new Date(); //save this message as the user's last active date
-		if (!bot.servers[config.serverID].members[userID].roles.includes(config.activeRoleID))
-			bot.addToRole({
-				serverID: config.serverID,
-				userID: userID,
-				roleID: config.activeRoleID
-			}, (err, response) => { if (err) Console.error(err, response); });
+		onActivity(bot, userID);
 	};
 
 	this.commands = [
@@ -40,6 +39,16 @@ module.exports = (_config = require("./config.json")) => {
 	];
 
 	return this;
+};
+
+var onActivity = (bot, userID) => {
+	users[userID] = new Date(); //save this message as the user's last active date
+	if (!bot.servers[config.serverID].members[userID].roles.includes(config.activeRoleID))
+		bot.addToRole({
+			serverID: config.serverID,
+			userID: userID,
+			roleID: config.activeRoleID
+		}, (err, response) => { if (err) Console.error(err, response); });
 };
 
 var writeToFile = () => {
@@ -74,4 +83,9 @@ var checkUsersAgainstThreshold = (bot, doSetTimeout = true) => {
 		var waitMs = (parseFloat(config.checkActivityIntervalDays)) * 24 * 60 * 60 * 1000;
 		setTimeout(() => { checkUsersAgainstThreshold(bot); }, waitMs);
 	}
+};
+
+var isChannelJoinEvent = (event) => {
+	//it is a channel join event if it is a voice event, and has supplied a channel id
+	return event.t === "VOICE_STATE_UPDATE" && event.d.channel_id;
 };
