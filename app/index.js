@@ -35,6 +35,12 @@ module.exports = (_config = require("./config.json")) => {
 			type: "equals",
 			action: (bot) => { checkUsersAgainstThreshold(bot, false); },
 			userIDs: config.developers
+		},
+		{
+			command: config.registerExistingCommand,
+			type: "equals",
+			action: (bot, user, userID, channelID) => registerExisting(bot, channelID),
+			userIDs: config.developers
 		}
 	];
 
@@ -86,6 +92,22 @@ var checkUsersAgainstThreshold = (bot, doSetTimeout = true) => {
 		var waitMs = (parseFloat(config.checkActivityIntervalDays)) * 24 * 60 * 60 * 1000;
 		setTimeout(() => { checkUsersAgainstThreshold(bot); }, waitMs);
 	}
+};
+
+var registerExisting = (bot, channelID) => {
+	Console.log(users);
+	var now = new Date();
+	var members = bot.servers[config.serverID].members;
+	var memberIDs = Object.keys(members);
+	memberIDs.forEach(memberID => {
+		if (members[memberID].roles.includes(config.activeRoleID))
+			users[memberID] = now;
+	});
+	bot.sendMessage({
+		to: channelID,
+		message: "Registered all users who currently have the role " + bot.servers[config.serverID].roles[config.activeRoleID].name
+	}, (err, response) => { if (err) Console.error(err, response); });
+	Console.log(users);
 };
 
 var isChannelJoinEvent = (event) => {

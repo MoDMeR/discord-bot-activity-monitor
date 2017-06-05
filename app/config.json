@@ -6,6 +6,7 @@
 	"serverID": "264420391282409473",
 	"activeRoleID": "320687855607480340",
 	"checkNowCommand": "!checkActive",
+	"registerExistingCommand": "!registerExisting",
 	"developers": [
 		"114743652173086728", "117966411548196870"
 	]
