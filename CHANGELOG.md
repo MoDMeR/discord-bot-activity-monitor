@@ -1,13 +1,19 @@
 # Changelog
 
-## 1.1.0
+## v1.2.0
+
+### Added
+
+- Add config option to ignore certain IDs
+
+## v1.1.0
 
 ### Added
 
 - Command to register all existing users with the "active" role assigned to them with last active time as "now"
 	- Useful when setting up the bot for the first time, and the role is already in use
 
-## 1.0.0
+## v1.0.0
 
 ### Features
 
