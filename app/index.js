@@ -48,13 +48,15 @@ module.exports = (_config = require("./config.json")) => {
 };
 
 var onActivity = (bot, userID) => {
-	users[userID] = new Date(); //save this message as the user's last active date
-	if (!bot.servers[config.serverID].members[userID].roles.includes(config.activeRoleID))
-		bot.addToRole({
-			serverID: config.serverID,
-			userID: userID,
-			roleID: config.activeRoleID
-		}, (err, response) => { if (err) Console.error(err, response); });
+	if (!config.ignoredUserIDs.includes(userID)) {
+		users[userID] = new Date(); //save this message as the user's last active date
+		if (!bot.servers[config.serverID].members[userID].roles.includes(config.activeRoleID))
+			bot.addToRole({
+				serverID: config.serverID,
+				userID: userID,
+				roleID: config.activeRoleID
+			}, (err, response) => { if (err) Console.error(err, response); });
+	}
 };
 
 var writeToFile = () => {

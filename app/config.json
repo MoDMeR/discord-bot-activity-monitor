@@ -7,6 +7,9 @@
 	"activeRoleID": "320687855607480340",
 	"checkNowCommand": "!checkActive",
 	"registerExistingCommand": "!registerExisting",
+	"ignoredUserIDs": [
+		"310036070228295681"
+	],
 	"developers": [
 		"114743652173086728", "117966411548196870"
 	]
