@@ -55,12 +55,12 @@ var onActivity = (bot, userID) => {
 				serverID: config.serverID,
 				userID: userID,
 				roleID: config.activeRoleID
-			}, (err, response) => { if (err) Console.error(err, response); });
+			}, (err, response) => { if (err) Console.error(new Date().toUTCString(), err, response); });
 	}
 };
 
 var writeToFile = () => {
-	JsonFile.writeFile(config.saveFile, users, (err) => { if (err) Console.error(err); });
+	JsonFile.writeFile(config.saveFile, users, (err) => { if (err) Console.error(new Date().toUTCString(), err); });
 	let saveIntervalMs = parseFloat(config.saveIntervalMins) * 60 * 1000;
 	setTimeout(writeToFile, saveIntervalMs);
 };
@@ -77,16 +77,17 @@ var checkUsersAgainstThreshold = (bot, doSetTimeout = true) => {
 				serverID: config.serverID,
 				userID: userID,
 				roleID: config.activeRoleID
-			}, (err, response) => { if (err) Console.error(err, response); });
+			}, (err, response) => { if (err) Console.error(new Date().toUTCString(), err, response); });
 
 			delete users[userID]; //un-save the user's last active time, as they don't matter anymore
 		}
 		else
-			bot.addToRole({
-				serverID: config.serverID,
-				userID: userID,
-				roleID: config.activeRoleID
-			}, (err, response) => { if (err) Console.error(err, response); });
+			if (!bot.servers[config.serverID].members[userID].roles.includes(config.activeRoleID))
+				bot.addToRole({
+					serverID: config.serverID,
+					userID: userID,
+					roleID: config.activeRoleID
+				}, (err, response) => { if (err) Console.error(new Date().toUTCString(), err, response); });
 	});
 
 	//set the timeout to wait before this function should recur
@@ -108,7 +109,7 @@ var registerExisting = (bot, channelID) => {
 	bot.sendMessage({
 		to: channelID,
 		message: "Registered all users who currently have the role " + bot.servers[config.serverID].roles[config.activeRoleID].name
-	}, (err, response) => { if (err) Console.error(err, response); });
+	}, (err, response) => { if (err) Console.error(new Date().toUTCString(), err, response); });
 	Console.log(users);
 };
 
