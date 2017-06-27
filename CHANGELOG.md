@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Prevent attempt to re-assign existing roles to users
+- Add date + time to logged errors
+
 ## v1.2.0
 
 ### Added
