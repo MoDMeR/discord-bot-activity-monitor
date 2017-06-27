@@ -33,13 +33,17 @@ module.exports = (_config = require("./config.json")) => {
 		{
 			command: config.checkNowCommand,
 			type: "equals",
-			action: (bot) => { checkUsersAgainstThreshold(bot, false); },
+			action: (bot) => {
+				checkUsersAgainstThreshold(bot, false);
+			},
 			userIDs: config.developers
 		},
 		{
 			command: config.registerExistingCommand,
 			type: "equals",
-			action: (bot, user, userID, channelID) => registerExisting(bot, channelID),
+			action: (bot, user, userID, channelID) => {
+				registerExisting(bot, channelID);
+			},
 			userIDs: config.developers
 		}
 	];
@@ -55,12 +59,12 @@ var onActivity = (bot, userID) => {
 				serverID: config.serverID,
 				userID: userID,
 				roleID: config.activeRoleID
-			}, (err, response) => { if (err) Console.error(new Date().toUTCString(), err, response); });
+			}, (err, response) => { if (err) Console.datedError(err, response); });
 	}
 };
 
 var writeToFile = () => {
-	JsonFile.writeFile(config.saveFile, users, (err) => { if (err) Console.error(new Date().toUTCString(), err); });
+	JsonFile.writeFile(config.saveFile, users, (err) => { if (err) Console.datedError(err); });
 	let saveIntervalMs = parseFloat(config.saveIntervalMins) * 60 * 1000;
 	setTimeout(writeToFile, saveIntervalMs);
 };
@@ -77,7 +81,7 @@ var checkUsersAgainstThreshold = (bot, doSetTimeout = true) => {
 				serverID: config.serverID,
 				userID: userID,
 				roleID: config.activeRoleID
-			}, (err, response) => { if (err) Console.error(new Date().toUTCString(), err, response); });
+			}, (err, response) => { if (err) Console.datedError(err, response); });
 
 			delete users[userID]; //un-save the user's last active time, as they don't matter anymore
 		}
@@ -87,7 +91,7 @@ var checkUsersAgainstThreshold = (bot, doSetTimeout = true) => {
 					serverID: config.serverID,
 					userID: userID,
 					roleID: config.activeRoleID
-				}, (err, response) => { if (err) Console.error(new Date().toUTCString(), err, response); });
+				}, (err, response) => { if (err) Console.datedError(err, response); });
 	});
 
 	//set the timeout to wait before this function should recur
@@ -109,11 +113,16 @@ var registerExisting = (bot, channelID) => {
 	bot.sendMessage({
 		to: channelID,
 		message: "Registered all users who currently have the role " + bot.servers[config.serverID].roles[config.activeRoleID].name
-	}, (err, response) => { if (err) Console.error(new Date().toUTCString(), err, response); });
+	}, (err, response) => { if (err) Console.datedError(err, response); });
 	Console.log(users);
 };
 
 var isChannelJoinEvent = (event) => {
 	//it is a channel join event if it is a voice event, and has supplied a channel id
 	return event.t === "VOICE_STATE_UPDATE" && event.d.channel_id;
+};
+
+Console.datedError = (...args) => {
+	args = ["[", new Date().toUTCString(), "]"].concat(args);
+	Console.error.apply(this, args);
 };
