@@ -12,7 +12,7 @@ const CONFIG_FILE = "./config.json";
 const SAVE_FILE = "./guilds.json";
 
 //global vars
-var guildsData = {};
+var guildsData;
 var config = require(CONFIG_FILE);
 
 module.exports = (client) => { //when loaded with require() by an external script, this acts as a kind of "on ready" function
@@ -26,11 +26,11 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 	});
 
 	client.on("message", (message) => {
-		let guild = client.guilds[message.guild.id];
-		if (guildsData[guild.id].allowRoleAddition) { //check if we're allowed to assign roles as well as remove them in this guild
+		let guild = client.guilds.get(message.channel.guild.id);
+		if (guildsData.get(guild.id) && guildsData.get(guild.id).allowRoleAddition) { //check if we're allowed to assign roles as well as remove them in this guild
 			let member = message.member;
-			let activeRole = guild.roles[guildsData[guild.id].activeRoleID];
-			if (!member.roles[activeRole.id]) //if the member doesn't already have the active role, give it to them
+			let activeRole = guild.roles.get(guildsData.get(guild.id).activeRoleID);
+			if (!member.roles.get(activeRole.id)) //if the member doesn't already have the active role, give it to them
 				member.addRole(activeRole);
 		}
 	});
@@ -41,7 +41,7 @@ var Guilds = new function(){
 		if (FileSystem.existsSync(saveFile))
 			return JsonFile.readFileSync(saveFile);
 		else
-			return {};
+			return new Map();
 	};
 	
 	this.saveToFile = (saveFile, guildsData) => {
@@ -59,24 +59,23 @@ var Guilds = new function(){
 	 */
 	this.checkUsersInAllGuilds = (clientGuilds, guildsData, callback) => {
 		let now = new Date();
-		let guildIDs = Object.keys(clientGuilds);
 
 		//iterate over all our guilds and subsequently all of their users
 		//check each user against that guild's threshold
-		guildIDs.forEach(guildID => {
-			let guildData = guildsData[guildID];
+		clientGuilds.forEach(guild => {
+			let guildData = guildsData.get(guild.id);
 			if (guildData && guildData.users && guildData.activeRoleID) {
-				let activeRole = clientGuilds[guildID].roles[guildData.activeRoleID];
+				let activeRole = guild.roles.get(guildData.activeRoleID);
 
 				//iterate over all the users we have *stored data* for, calculate the time difference since they were last active
 				//remove the active role from them if they have been inactive for too long
-				let storedUserIDs = Object.keys(guildData.users);
-				storedUserIDs.forEach(userID => {
-					let diff = new DateDiff(now, Date.parse(guildData.users[userID]));
+				let usersData = guildData.users;
+				usersData.forEach(userData => {
+					let diff = new DateDiff(now, Date.parse(guildData.users.get(userData)));
 
 					if (diff.days() > guildData.inactiveThresholdDays) {
-						clientGuilds[guildID].members[userID].removeRole(activeRole);
-						delete guildData.users[userID]; //un-save the user's last active time, as they don't matter anymore
+						guild.members.get(userData).removeRole(activeRole);
+						guildData.users.delete(userData); //un-save the user's last active time, as they don't matter anymore
 					}
 				});
 			}
