@@ -17,7 +17,7 @@ var config = require(CONFIG_FILE);
 
 module.exports = (client) => { //when loaded with require() by an external script, this acts as a kind of "on ready" function
 	guildsData = Guilds.loadFromFile(SAVE_FILE); //load saved data from file on start up
-	Guilds.setSaveToFileInterval(config.global.saveIntervalMins * 60 * 1000); //set up regular file saving
+	Guilds.setSaveToFileInterval(SAVE_FILE, guildsData, config.global.saveIntervalMins * 60 * 1000); //set up regular file saving
 
 	//check all the users against the threshold now, and set up a recurring callback to do it again after 24 hours
 	Guilds.checkUsersInAllGuilds(client.guilds, guildsData, () => {
@@ -36,23 +36,22 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 	});
 };
 
-var Guilds = new function () {
+var Guilds = new function(){
 	this.loadFromFile = (saveFile) => {
 		if (FileSystem.existsSync(saveFile))
 			return JsonFile.readFileSync(saveFile);
 		else
 			return {};
 	};
-
+	
 	this.saveToFile = (saveFile, guildsData) => {
 		JsonFile.writeFile(saveFile, guildsData, (err) => { if (err) Console.dateError(err); });
 	};
 
 	this.setSaveToFileInterval = (saveFile, guildsData, intervalMs) => {
-		this.saveFile(saveFile, guildsData); //save the file
+		this.saveToFile(saveFile, guildsData); //save the file
 		setTimeout(this.setSaveToFileInterval, intervalMs); //set up a timeout to save the file again
 	};
-
 	/**
 	 * @param {object} clientGuilds client.guilds object from the discord.js client
 	 * @param {object} guildsData data from the guilds.json file
