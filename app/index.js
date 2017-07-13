@@ -24,6 +24,16 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 		var waitMs = 1 * 24 * 60 * 60 * 1000; //get 1 day in ms
 		setTimeout(() => Guilds.checkUsersInAllGuilds(client.guilds, guildsData), waitMs);
 	});
+
+	client.on("message", (message) => {
+		let guild = client.guilds[message.guild.id];
+		if (guildsData[guild.id].allowRoleAddition) { //check if we're allowed to assign roles as well as remove them in this guild
+			let member = message.member;
+			let activeRole = guild.roles[guildsData[guild.id].activeRoleID];
+			if (!member.roles[activeRole.id]) //if the member doesn't already have the active role, give it to them
+				member.addRole(activeRole);
+		}
+	});
 };
 
 var Guilds = new function () {
@@ -56,19 +66,21 @@ var Guilds = new function () {
 		//check each user against that guild's threshold
 		guildIDs.forEach(guildID => {
 			let guildData = guildsData[guildID];
-			let activeRole = clientGuilds[guildID].roles[guildData.activeRoleID];
+			if (guildData && guildData.users && guildData.activeRoleID) {
+				let activeRole = clientGuilds[guildID].roles[guildData.activeRoleID];
 
-			//iterate over all the users we have *stored data* for, calculate the time difference since they were last active
-			//remove the active role from them if they have been inactive for too long
-			let storedUserIDs = Object.keys(guildData.users);
-			storedUserIDs.forEach(userID => {
-				let diff = new DateDiff(now, Date.parse(guildData.users[userID]));
+				//iterate over all the users we have *stored data* for, calculate the time difference since they were last active
+				//remove the active role from them if they have been inactive for too long
+				let storedUserIDs = Object.keys(guildData.users);
+				storedUserIDs.forEach(userID => {
+					let diff = new DateDiff(now, Date.parse(guildData.users[userID]));
 
-				if (diff.days() > guildData.inactiveThresholdDays) {
-					clientGuilds[guildID].members[userID].removeRole(activeRole);
-					delete guildData.users[userID]; //un-save the user's last active time, as they don't matter anymore
-				}
-			});
+					if (diff.days() > guildData.inactiveThresholdDays) {
+						clientGuilds[guildID].members[userID].removeRole(activeRole);
+						delete guildData.users[userID]; //un-save the user's last active time, as they don't matter anymore
+					}
+				});
+			}
 		});
 
 		if (callback)

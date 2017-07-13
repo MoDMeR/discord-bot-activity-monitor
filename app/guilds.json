@@ -2,6 +2,7 @@
 	"example-idgoeshere": {
 		"inactiveThresholdDays": 30,
 		"activeRoleID": "123456789",
+		"allowRoleAddition": true,
 		"ignoredUserIDs": [
 			"987654321"
 		],
