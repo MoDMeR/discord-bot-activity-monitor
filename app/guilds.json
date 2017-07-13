@@ -1,0 +1,12 @@
+{
+	"example-idgoeshere": {
+		"inactiveThresholdDays": 30,
+		"activeRoleID": "123456789",
+		"ignoredUserIDs": [
+			"987654321"
+		],
+		"users": {
+			"987654321": "2017-07-13T21:04:41.998Z"
+		}
+	}
+}
