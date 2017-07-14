@@ -83,27 +83,37 @@ var Guilds = new function () {
 	};
 
 	this.walkThroughGuildSetup = (message) => {
-		message.reply("hi").then(msg =>
-			Console.log(msg)).catch(Console.error);
+		var setupHelper = new GuildSetupHelper(message);
 	};
 };
 
-var GuildSetupHelper = new function () {
-	this.setupSteps = [
-		{ }
-	]
+var GuildSetupHelper = class GuildSetupHelper {
+	constructor(message) {
+		this.guild = message.channel.guild;
+		this.guildData = {};
+		this.authorisedUser = message.member.id;
 
-	this.inSetup = false;
-	
-	
-};
+		this.setupSteps = new Map();
+		this.setupSteps.set("Please type a the number of days to set the inactive threshold at", (message) => {
+			this.guildData.inactiveThresholdDays = parseInt(message.content);
+		});
+		this.setupSteps.set("Please @tag the role you wish to use to indicate an 'active' user", (messsage) => {
+			//todo
+			this.guildData.activeroleID = message.content;
+		});
+		this.setupSteps.set("Would you like the bot to *add* people to this role if they don't have it, whenever they type a message? (yes/no)", (messsage) => {
+			this.guildData.allowRoleAddition = message.content.toLowerCase() === "yes";
+		});
+		this.setupSteps.set("Please @tag all the roles you wish to be *exempt* from being checked (type 'none' if none)", (message) => {
+			if (this.message.content !== "none") {
+				//todo
+				this.guildsData.ignoredUserIDs = [];
+			}
+		});
+	}
 
-var Guild = class Guild {
-	constructor(guildID, activeRoleID, allowRoleAddition, ignoredUserIDs) {
-		this.guildID = guildID;
-		this.activeRoleID = activeRoleID;
-		this.allowRoleAddition = allowRoleAddition;
-		this.ignoredUserIDs = ignoredUserIDs;
+	walkThroughGuildSetup(){
+		//iterate over this.setupSteps, use on message event handler and check if the messsage is from the authorised setup user
 	}
 };
 
