@@ -27,7 +27,7 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 
 	client.on("message", (message) => {
 		if (message.content === config.commands.setup)
-			Guilds.walkThroughGuildSetup(message);
+			Guilds.walkThroughGuildSetup(client, message);
 		else
 			registerActivity(client, message);
 	});
@@ -82,8 +82,9 @@ var Guilds = new function () {
 			callback();
 	};
 
-	this.walkThroughGuildSetup = (message) => {
+	this.walkThroughGuildSetup = (client, message) => {
 		var setupHelper = new GuildSetupHelper(message);
+		setupHelper.walkThroughGuildSetup(client, message);
 	};
 };
 
@@ -92,8 +93,9 @@ var GuildSetupHelper = class GuildSetupHelper {
 		this.guild = message.channel.guild;
 		this.guildData = {};
 		this.authorisedUser = message.member.id;
+		this.currentStepIdx = -1;
 
-		var setupStepsArr = [
+		this.setupSteps = [
 			{
 				message: "How many days would you like to set the inactive threshold at?",
 				action: (message) => {
@@ -119,24 +121,34 @@ var GuildSetupHelper = class GuildSetupHelper {
 				message: "Please @tag all the roles you wish to be *exempt* from role removal (type 'none' if none)",
 				action: (message) => {
 					//expect the message to either be "none" or in the format '@<snowflake> @<snowflake> @<snowflake>'
-					if(message.content !== "none"){
+					this.guildData.ignoredUserIDs = [];
+					if (message.content !== "none") {
 						var snowflakes = message.content.split(" ");
 						snowflakes.forEach(x => this.guildData.ignoredUserIDs.push(x.replace(/\D+/g, "")));
 					}
-					else
-						this.guildData.ignoredUserIDs = [];
 				}
 			}
 		];
-
-		this.setupSteps = new Map();
-		setupStepsArr.forEach(x => {
-			this.setupSteps.set(x.message, x.action);
-		});
 	}
 
-	walkThroughGuildSetup() {
+	walkThroughGuildSetup(client, initialMessage) {
 		//iterate over this.setupSteps, use on message event handler and check if the messsage is from the authorised setup user
+		var handler = (message) => {
+			if (message.member.id === this.authorisedUser) {
+				if (this.currentStepIdx >= 0)
+					this.setupSteps[this.currentStepIdx].action(message);
+
+				this.currentStepIdx++;
+
+				if (this.currentStepIdx <= this.setupSteps.length)
+					message.reply(this.setupSteps[this.currentStepIdx].message);
+				else
+					client.removeListener("message", handler);
+			}
+		};
+
+		client.on("message", handler);
+		handler(initialMessage);
 	}
 };
 
