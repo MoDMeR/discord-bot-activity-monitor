@@ -1,5 +1,6 @@
 {
-	"global":{
-		"saveIntervalMins": 5
+	"saveIntervalMins": 5,
+	"commands": {
+		"setup": "!activitymonitor setup"
 	}
 }
