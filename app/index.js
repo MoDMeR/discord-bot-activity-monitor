@@ -84,7 +84,10 @@ var Guilds = new function () {
 
 	this.walkThroughGuildSetup = (client, message) => {
 		var setupHelper = new GuildSetupHelper(message);
-		setupHelper.walkThroughGuildSetup(client, message);
+		setupHelper.walkThroughGuildSetup(client, message).then(guildData => {
+			guildsData.set(message.guild.id, guildData);
+			this.saveToFile(SAVE_FILE, guildsData);
+		});
 	};
 };
 
@@ -92,7 +95,7 @@ var GuildSetupHelper = class GuildSetupHelper {
 	constructor(message) {
 		this.guild = message.channel.guild;
 		this.guildData = {};
-		this.authorisedUser = message.member.id;
+		this.guildData.authorisedUser = message.member.id;
 		this.currentStepIdx = -1;
 
 		this.setupSteps = [
@@ -132,23 +135,31 @@ var GuildSetupHelper = class GuildSetupHelper {
 	}
 
 	walkThroughGuildSetup(client, initialMessage) {
-		//iterate over this.setupSteps, use on message event handler and check if the messsage is from the authorised setup user
+		var doResolve;
+		var promiseGuild = new Promise((resolve, reject) => {
+			doResolve = resolve;
+		});
+
 		var handler = (message) => {
-			if (message.member.id === this.authorisedUser) {
+			if (message.member.id === this.guildData.authorisedUser) {
 				if (this.currentStepIdx >= 0)
 					this.setupSteps[this.currentStepIdx].action(message);
 
 				this.currentStepIdx++;
 
-				if (this.currentStepIdx <= this.setupSteps.length)
+				if (this.currentStepIdx <= this.setupSteps.length - 1)
 					message.reply(this.setupSteps[this.currentStepIdx].message);
-				else
+				else {
 					client.removeListener("message", handler);
+					doResolve(this.guildData);
+				}
 			}
 		};
 
 		client.on("message", handler);
 		handler(initialMessage);
+
+		return promiseGuild;
 	}
 };
 
