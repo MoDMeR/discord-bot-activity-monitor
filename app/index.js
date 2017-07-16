@@ -36,13 +36,14 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 var Guilds = new function () {
 	this.loadFromFile = (saveFile) => {
 		if (FileSystem.existsSync(saveFile))
-			return JsonFile.readFileSync(saveFile);
+			return new Map(JsonFile.readFileSync(saveFile));
 		else
 			return new Map();
 	};
 
 	this.saveToFile = (saveFile, guildsData) => {
-		JsonFile.writeFile(saveFile, guildsData, (err) => { if (err) Console.dateError(err); });
+		var data = [...guildsData];
+		JsonFile.writeFile(saveFile, data, (err) => { if (err) Console.dateError(err); });
 	};
 
 	this.setSaveToFileInterval = (saveFile, guildsData, intervalMs) => {
