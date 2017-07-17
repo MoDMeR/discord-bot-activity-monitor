@@ -25,10 +25,14 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 	});
 
 	client.on("message", (message) => {
-		if (message.member.id === message.guild.ownerID && message.content === config.commands.setup) //check if the owner invoked the setup command
-			Guilds.walkThroughGuildSetup(client, message, guildsData);
-		if (message.member.id === message.guild.ownerID && message.content === config.commands.purge)
-			Activity.checkUsersInAllGuilds(client.guilds, guildsData);
+		if (message.member.id === message.guild.ownerID) { //owner only commands
+			if (message.content === config.commands.setup)
+				Guilds.walkThroughGuildSetup(client, message, guildsData);
+			else if (message.content === config.commands.purge)
+				Activity.checkUsersInAllGuilds([message.channel.guild], guildsData);
+			else if (message.content === config.commands.registerExisting)
+				Activity.registerExisting(message.channel.guild, guildsData);
+		}
 		else
 			Activity.registerActivity(client, message, guildsData);
 	});
@@ -185,6 +189,13 @@ var Activity = {
 					member.addRole(activeRole);
 			}
 		}
+	},
+	registerExisting: (clientGuild, guildsData) => {
+		let guildData = guildsData[clientGuild.id];
+		clientGuild.roles.get(guildData.activeRoleID).members.forEach(member => {
+			if (!guildData.ignoredUserIDs.includes(member.id))
+				guildsData[clientGuild.id].users[member.id] = new Date();
+		});
 	}
 };
 
