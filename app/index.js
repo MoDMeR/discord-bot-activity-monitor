@@ -11,11 +11,10 @@ const DateDiff = require("date-diff");
 const CONFIG_FILE = "./config.json";
 const SAVE_FILE = "./guilds.json";
 
-//global vars
-var guildsData;
-var config = require(CONFIG_FILE);
-
 module.exports = (client) => { //when loaded with require() by an external script, this acts as a kind of "on ready" function
+	var guildsData;
+	var config = require(CONFIG_FILE);
+
 	guildsData = Guilds.File.loadFromFile(SAVE_FILE); //load saved data from file on start up
 	Guilds.File.setSaveToFileInterval(SAVE_FILE, guildsData, config.saveIntervalMins * 60 * 1000); //set up regular file saving
 
@@ -27,11 +26,9 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 
 	client.on("message", (message) => {
 		if (message.content === config.commands.setup)
-			Guilds.walkThroughGuildSetup(client, message);
-		else if (message.content === "save")
-			Guilds.File.saveToFile(SAVE_FILE, guildsData);
+			Guilds.walkThroughGuildSetup(client, message, guildsData);
 		else
-			Activity.registerActivity(client, message);
+			Activity.registerActivity(client, message, guildsData);
 	});
 };
 
@@ -125,7 +122,7 @@ var Guilds = {
 		}
 	},
 
-	walkThroughGuildSetup: (client, message) => {
+	walkThroughGuildSetup: (client, message, guildsData) => {
 		var setupHelper = new Guilds.SetupHelper(message);
 		setupHelper.walkThroughGuildSetup(client, message).then(guildData => {
 			guildsData[message.guild.id] = guildData;
@@ -167,13 +164,21 @@ var Activity = {
 		if (callback)
 			callback();
 	},
-	registerActivity: (client, message) => {
-		let guild = message.channel.guild;
-		if (guildsData[guild.id] && guildsData[guild.id].allowRoleAddition) { //check if we're allowed to assign roles as well as remove them in this guild
+	registerActivity: (client, message, guildsData) => {
+		let guild = message.channel.guild, guildData = guildsData[guild.id];
+		if (guildData) {
 			let member = message.member;
-			let activeRole = guild.roles.get(guildsData[guild.id].activeRoleID);
-			if (!member.roles.get(activeRole.id)) //if the member doesn't already have the active role, give it to them
-				member.addRole(activeRole);
+
+			if (!guildData.users) //create our .users object if it doesn't exist
+				guildData.users = {};
+
+			guildData.users[member.id] = new Date(); //store now as the latest date this user has interacted
+
+			if (guildData.allowRoleAddition) { //check if we're allowed to assign roles as well as remove them in this guild
+				let activeRole = guild.roles.get(guildData.activeRoleID);
+				if (!member.roles.get(activeRole.id)) //if the member doesn't already have the active role, give it to them
+					member.addRole(activeRole);
+			}
 		}
 	}
 };

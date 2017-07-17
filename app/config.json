@@ -1,5 +1,5 @@
 {
-	"saveIntervalMins": 5,
+	"saveIntervalMins": 1,
 	"commands": {
 		"setup": "!activitymonitor setup"
 	}
