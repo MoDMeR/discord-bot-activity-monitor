@@ -179,7 +179,9 @@ var Activity = {
 
 			if (guildData.allowRoleAddition) { //check if we're allowed to assign roles as well as remove them in this guild
 				let activeRole = guild.roles.get(guildData.activeRoleID);
-				if (!member.roles.get(activeRole.id)) //if the member doesn't already have the active role, give it to them
+
+				//if the member doesn't already have the active role, and they aren't in the list of ignored IDs, give it to them
+				if (!member.roles.get(activeRole.id) && !guildData.ignoredUserIDs.includes(message.member.id))
 					member.addRole(activeRole);
 			}
 		}
