@@ -33,8 +33,8 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 			else if (message.content === config.commands.registerExisting)
 				Activity.registerExisting(message.channel.guild, guildsData);
 		}
-		else
-			Activity.registerActivity(client, message, guildsData);
+
+		Activity.registerActivity(client, message, guildsData);
 	});
 };
 
@@ -52,7 +52,7 @@ var Guilds = {
 
 		this.setSaveToFileInterval = (saveFile, guildsData, intervalMs) => {
 			this.saveToFile(saveFile, guildsData); //save the file
-			setTimeout(this.setSaveToFileInterval, intervalMs); //set up a timeout to save the file again
+			setTimeout(() => this.setSaveToFileInterval(saveFile, guildsData, intervalMs), intervalMs); //set up a timeout to save the file again
 		};
 	},
 
@@ -194,7 +194,7 @@ var Activity = {
 		let guildData = guildsData[clientGuild.id];
 		clientGuild.roles.get(guildData.activeRoleID).members.forEach(member => {
 			if (!guildData.ignoredUserIDs.includes(member.id))
-				guildsData[clientGuild.id].users[member.id] = new Date();
+				guildData.users[member.id] = new Date();
 		});
 	}
 };
