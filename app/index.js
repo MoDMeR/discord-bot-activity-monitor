@@ -1,128 +1,210 @@
 //node imports
-var Console = require("console");
-var fs = require("fs");
+const Console = require("console");
+const FileSystem = require("fs");
 
 //external lib imports
-var JsonFile = require("jsonfile");
-var DateDiff = require("date-diff");
+const Discord = require("discord.js");
+const JsonFile = require("jsonfile");
+const DateDiff = require("date-diff");
 
-var users = {};
-var config;
+//const vars
+const CONFIG_FILE = "./config.json";
+const SAVE_FILE = "./guilds.json";
 
-module.exports = (_config = require("./config.json")) => {
-	config = _config;
+module.exports = (client) => { //when loaded with require() by an external script, this acts as a kind of "on ready" function
+	var guildsData;
+	var config = require(CONFIG_FILE);
 
-	this.onReady = (bot) => {
-		if (fs.existsSync(config.saveFile))
-			users = JsonFile.readFileSync(config.saveFile); //load any data we already have stored
+	guildsData = Guilds.File.loadFromFile(SAVE_FILE); //load saved data from file on start up
+	Guilds.File.setSaveToFileInterval(SAVE_FILE, guildsData, config.saveIntervalSec * 1000); //set up regular file saving
 
-		writeToFile();
-		checkUsersAgainstThreshold(bot);
+	//check all the users against the threshold now, and set up a recurring callback to do it again after 24 hours
+	Activity.checkUsersInAllGuilds(client.guilds, guildsData, () => {
+		var waitMs = 1 * 24 * 60 * 60 * 1000; //get 1 day in ms
+		var doCheck = () => {
+			Activity.checkUsersInAllGuilds(client.guilds, guildsData);
+			setTimeout(() => doCheck, waitMs);
+		};
 
-		bot.on("any", event => {
-			if (isChannelJoinEvent(event))
-				onActivity(bot, event.d.user_id);
+		doCheck();
+	});
+
+	client.on("message", (message) => {
+		if (message.member.id === message.guild.ownerID) { //owner only commands
+			if (message.content === config.commands.setup)
+				Guilds.walkThroughGuildSetup(client, message, guildsData);
+			else if (message.content === config.commands.purge)
+				Activity.checkUsersInAllGuilds([message.channel.guild], guildsData);
+			else if (message.content === config.commands.registerExisting)
+				Activity.registerExisting(message.channel.guild, guildsData);
+		}
+
+		Activity.registerActivity(client, message, guildsData);
+	});
+};
+
+var Guilds = {
+	File: new function () {
+		this.loadFromFile = (saveFile) => {
+			if (FileSystem.existsSync(saveFile))
+				return JsonFile.readFileSync(saveFile);
+			else return {};
+		};
+
+		this.saveToFile = (saveFile, guildsData) => {
+			JsonFile.writeFile(saveFile, guildsData, (err) => { if (err) Console.dateError(err); });
+		};
+
+		this.setSaveToFileInterval = (saveFile, guildsData, intervalMs) => {
+			this.saveToFile(saveFile, guildsData); //save the file
+			setTimeout(() => this.setSaveToFileInterval(saveFile, guildsData, intervalMs), intervalMs); //set up a timeout to save the file again
+		};
+	},
+
+	SetupHelper: class {
+		constructor(message) {
+			this.guild = message.channel.guild;
+			this.guildData = { users: {} };
+			this.currentStepIdx = -1;
+
+			this.setupSteps = [
+				{
+					message: "How many days would you like to set the inactive threshold at?",
+					action: (message) => {
+						//expect the message to be an integer value
+						this.guildData.inactiveThresholdDays = parseInt(message.content);
+					}
+				},
+				{
+					message: "Please @tag the role you with to use to indicate an 'active' user",
+					action: (message) => {
+						//expect the message to be in the format @<snowflake>
+						this.guildData.activeRoleID = message.content.replace(/\D+/g, "");
+					}
+				},
+				{
+					message: "Would you like the bot to *add* people to this role if they send a message and *don't* already have it? (yes/no)",
+					action: (message) => {
+						//expect the message to be "yes" or "no"
+						this.guildData.allowRoleAddition = message.content.toLowerCase() === "yes";
+					}
+				},
+				{
+					message: "Please @tag all the roles you wish to be *exempt* from role removal (type 'none' if none)",
+					action: (message) => {
+						//expect the message to either be "none" or in the format '@<snowflake> @<snowflake> @<snowflake>'
+						this.guildData.ignoredUserIDs = [];
+						if (message.content !== "none") {
+							var snowflakes = message.content.split(" ");
+							snowflakes.forEach(x => this.guildData.ignoredUserIDs.push(x.replace(/\D+/g, "")));
+						}
+					}
+				}
+			];
+		}
+
+		doWalkThroughGuildSetup(client, initialMessage) {
+			var doResolve;
+			var promiseGuild = new Promise((resolve, reject) => {
+				doResolve = resolve;
+			});
+
+			var handler = (message) => {
+				if (message.member.id === message.guild.ownerID) {
+					if (this.currentStepIdx >= 0)
+						this.setupSteps[this.currentStepIdx].action(message);
+
+					this.currentStepIdx++;
+
+					if (this.currentStepIdx <= this.setupSteps.length - 1)
+						message.reply(this.setupSteps[this.currentStepIdx].message);
+					else {
+						client.removeListener("message", handler);
+						doResolve(this.guildData);
+					}
+				}
+			};
+
+			client.on("message", handler);
+			handler(initialMessage);
+
+			return promiseGuild;
+		}
+	},
+
+	walkThroughGuildSetup: (client, message, guildsData) => {
+		var setupHelper = new Guilds.SetupHelper(message);
+		setupHelper.doWalkThroughGuildSetup(client, message).then(guildData => {
+			let guildID = message.guild.id;
+			if (guildsData[guildID])
+				guildData.users = guildsData[guildID].users; //extract any existing user data present, ie if we're overwriting existing guild settings
+
+			guildsData[guildID] = guildData;
+
+			Guilds.File.saveToFile(SAVE_FILE, guildsData);
 		});
-	};
-
-	this.onMessage = (bot, user, userID, channelID, message) => {
-		onActivity(bot, userID);
-	};
-
-	this.commands = [
-		{
-			command: config.checkNowCommand,
-			type: "equals",
-			action: (bot) => {
-				checkUsersAgainstThreshold(bot, false);
-			},
-			userIDs: config.developers
-		},
-		{
-			command: config.registerExistingCommand,
-			type: "equals",
-			action: (bot, user, userID, channelID) => {
-				registerExisting(bot, channelID);
-			},
-			userIDs: config.developers
-		}
-	];
-
-	return this;
+	},
 };
 
-var onActivity = (bot, userID) => {
-	if (!config.ignoredUserIDs.includes(userID)) {
-		users[userID] = new Date(); //save this message as the user's last active date
-		if (!bot.servers[config.serverID].members[userID].roles.includes(config.activeRoleID))
-			bot.addToRole({
-				serverID: config.serverID,
-				userID: userID,
-				roleID: config.activeRoleID
-			}, (err, response) => { if (err) Console.datedError(err, response); });
+var Activity = {
+	/**
+		 * @param {object} clientGuilds client.guilds object from the discord.js client
+		 * @param {object} guildsData data from the guilds.json file
+		 * @param {function} [callback] callback executed once all the users have been checked
+		 */
+	checkUsersInAllGuilds: (clientGuilds, guildsData, callback) => {
+		let now = new Date();
+
+		//iterate over all our guilds and subsequently all of their users
+		//check each user against that guild's threshold
+		clientGuilds.forEach(guild => {
+			let guildData = guildsData[guild.id];
+			if (guildData && guildData.users && guildData.activeRoleID) {
+				let activeRole = guild.roles.get(guildData.activeRoleID);
+
+				//iterate over all the users we have *stored data* for, calculate the time difference since they were last active
+				//remove the active role from them if they have been inactive for too long
+				Object.keys(guildData.users).forEach(userID => {
+					let activeDate = guildData.users[userID];
+					let diff = new DateDiff(now, Date.parse(activeDate));
+
+					if (diff.days() > guildData.inactiveThresholdDays) {
+						guild.members.get(userID).removeRole(activeRole);
+						delete guildData.users[userID]; //un-save the user's last active time, as they don't matter anymore
+					}
+				});
+			}
+		});
+
+		if (callback)
+			callback();
+	},
+	registerActivity: (client, message, guildsData) => {
+		let guild = message.channel.guild, guildData = guildsData[guild.id];
+		if (guildData) {
+			let member = message.member;
+
+			guildData.users[member.id] = new Date(); //store now as the latest date this user has interacted
+
+			if (guildData.allowRoleAddition) { //check if we're allowed to assign roles as well as remove them in this guild
+				let activeRole = guild.roles.get(guildData.activeRoleID);
+
+				//if the member doesn't already have the active role, and they aren't in the list of ignored IDs, give it to them
+				if (!member.roles.get(activeRole.id) && !guildData.ignoredUserIDs.includes(message.member.id))
+					member.addRole(activeRole);
+			}
+		}
+	},
+	registerExisting: (clientGuild, guildsData) => {
+		let guildData = guildsData[clientGuild.id];
+		clientGuild.roles.get(guildData.activeRoleID).members.forEach(member => {
+			if (!guildData.ignoredUserIDs.includes(member.id))
+				guildData.users[member.id] = new Date();
+		});
 	}
 };
 
-var writeToFile = () => {
-	JsonFile.writeFile(config.saveFile, users, (err) => { if (err) Console.datedError(err); });
-	let saveIntervalMs = parseFloat(config.saveIntervalMins) * 60 * 1000;
-	setTimeout(writeToFile, saveIntervalMs);
-};
-
-var checkUsersAgainstThreshold = (bot, doSetTimeout = true) => {
-	var now = new Date(); //get current date
-	var inactiveThresholdDays = parseFloat(config.inactiveThresholdDays); //get an integer for the number of days a user must have been inactive for before the role is removed
-	Object.keys(users).forEach(userID => { //iterate over the user IDs
-		var diff = new DateDiff(now, Date.parse(users[userID])); //calculate the difference between the current date and the last time the user was active
-
-		//remove the "active" role from the user if they haven't been active within the threshold, give them it if they have
-		if (diff.days() > inactiveThresholdDays) {
-			bot.removeFromRole({
-				serverID: config.serverID,
-				userID: userID,
-				roleID: config.activeRoleID
-			}, (err, response) => { if (err) Console.datedError(err, response); });
-
-			delete users[userID]; //un-save the user's last active time, as they don't matter anymore
-		}
-		else
-			if (!bot.servers[config.serverID].members[userID].roles.includes(config.activeRoleID))
-				bot.addToRole({
-					serverID: config.serverID,
-					userID: userID,
-					roleID: config.activeRoleID
-				}, (err, response) => { if (err) Console.datedError(err, response); });
-	});
-
-	//set the timeout to wait before this function should recur
-	if (doSetTimeout) {
-		var waitMs = (parseFloat(config.checkActivityIntervalDays)) * 24 * 60 * 60 * 1000;
-		setTimeout(() => { checkUsersAgainstThreshold(bot); }, waitMs);
-	}
-};
-
-var registerExisting = (bot, channelID) => {
-	Console.log(users);
-	var now = new Date();
-	var members = bot.servers[config.serverID].members;
-	var memberIDs = Object.keys(members);
-	memberIDs.forEach(memberID => {
-		if (members[memberID].roles.includes(config.activeRoleID))
-			users[memberID] = now;
-	});
-	bot.sendMessage({
-		to: channelID,
-		message: "Registered all users who currently have the role " + bot.servers[config.serverID].roles[config.activeRoleID].name
-	}, (err, response) => { if (err) Console.datedError(err, response); });
-	Console.log(users);
-};
-
-var isChannelJoinEvent = (event) => {
-	//it is a channel join event if it is a voice event, and has supplied a channel id
-	return event.t === "VOICE_STATE_UPDATE" && event.d.channel_id;
-};
-
-Console.datedError = (...args) => {
+Console.dateError = (...args) => {
 	args = ["[", new Date().toUTCString(), "]"].concat(args);
 	Console.error.apply(this, args);
 };
