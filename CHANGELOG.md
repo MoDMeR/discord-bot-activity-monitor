@@ -1,9 +1,19 @@
 # Changelog
 
-## Unreleased
+## v2.0.0
+
+### Updated
+
+- Updated core library to use discord.js rather than discord.io (discord.js handles rate limiting automatically)
+- Updated bot to support multiple guilds, rather than requiring a new instance for each one
+
+## Added
+
+- Guild setup helper via in-chat commands
 
 ### Fixed
 
+- Fixed rate limit issues when assigning/removing roles from users (by switching to discord.js)
 - Prevent attempt to re-assign existing roles to users
 - Add date + time to logged errors
 
