@@ -15,7 +15,7 @@ Invite the bot to your server [here](https://discordapp.com/oauth2/authorize?cli
 
 ## Configuring the bot
 
-### Permissions:
+### Permissions
 
 Required for normal functionality:
 - Manage Roles
