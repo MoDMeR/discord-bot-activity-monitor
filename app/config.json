@@ -1,6 +1,7 @@
 {
 	"saveIntervalSec": 30,
 	"commands": {
-		"setup": "!activitymonitor setup"
+		"setup": "!activitymonitor setup",
+		"purge": "!activitymonitor purge"
 	}
 }
