@@ -16,7 +16,7 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 	var config = require(CONFIG_FILE);
 
 	guildsData = Guilds.File.loadFromFile(SAVE_FILE); //load saved data from file on start up
-	Guilds.File.setSaveToFileInterval(SAVE_FILE, guildsData, config.saveIntervalMins * 60 * 1000); //set up regular file saving
+	Guilds.File.setSaveToFileInterval(SAVE_FILE, guildsData, config.saveIntervalSec * 1000); //set up regular file saving
 
 	//check all the users against the threshold now, and set up a recurring callback to do it again after 24 hours
 	Activity.checkUsersInAllGuilds(client.guilds, guildsData, () => {
@@ -92,7 +92,7 @@ var Guilds = {
 			];
 		}
 
-		walkThroughGuildSetup(client, initialMessage) {
+		doWalkThroughGuildSetup(client, initialMessage) {
 			var doResolve;
 			var promiseGuild = new Promise((resolve, reject) => {
 				doResolve = resolve;
@@ -123,8 +123,13 @@ var Guilds = {
 
 	walkThroughGuildSetup: (client, message, guildsData) => {
 		var setupHelper = new Guilds.SetupHelper(message);
-		setupHelper.walkThroughGuildSetup(client, message).then(guildData => {
-			guildsData[message.guild.id] = guildData;
+		setupHelper.doWalkThroughGuildSetup(client, message).then(guildData => {
+			let guildID = message.guild.id;
+			if (guildsData[guildID])
+				guildData.users = guildsData[guildID].users; //extract any existing user data present, ie if we're overwriting existing guild settings
+
+			guildsData[guildID] = guildData;
+
 			Guilds.File.saveToFile(SAVE_FILE, guildsData);
 		});
 	},
