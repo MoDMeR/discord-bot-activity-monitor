@@ -25,7 +25,7 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 	});
 
 	client.on("message", (message) => {
-		if (message.content === config.commands.setup)
+		if (message.member.id === message.guild.ownerID && message.content === config.commands.setup) //check if the owner invoked the setup command
 			Guilds.walkThroughGuildSetup(client, message, guildsData);
 		else
 			Activity.registerActivity(client, message, guildsData);
@@ -53,8 +53,7 @@ var Guilds = {
 	SetupHelper: class {
 		constructor(message) {
 			this.guild = message.channel.guild;
-			this.guildData = {};
-			this.guildData.authorisedUser = message.member.id;
+			this.guildData = { users: {} };
 			this.currentStepIdx = -1;
 
 			this.setupSteps = [
@@ -100,7 +99,7 @@ var Guilds = {
 			});
 
 			var handler = (message) => {
-				if (message.member.id === this.guildData.authorisedUser) {
+				if (message.member.id === message.guild.ownerID) {
 					if (this.currentStepIdx >= 0)
 						this.setupSteps[this.currentStepIdx].action(message);
 
@@ -168,9 +167,6 @@ var Activity = {
 		let guild = message.channel.guild, guildData = guildsData[guild.id];
 		if (guildData) {
 			let member = message.member;
-
-			if (!guildData.users) //create our .users object if it doesn't exist
-				guildData.users = {};
 
 			guildData.users[member.id] = new Date(); //store now as the latest date this user has interacted
 
