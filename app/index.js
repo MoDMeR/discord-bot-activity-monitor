@@ -21,7 +21,12 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 	//check all the users against the threshold now, and set up a recurring callback to do it again after 24 hours
 	Activity.checkUsersInAllGuilds(client.guilds, guildsData, () => {
 		var waitMs = 1 * 24 * 60 * 60 * 1000; //get 1 day in ms
-		setTimeout(() => Guilds.checkUsersInAllGuilds(client.guilds, guildsData), waitMs);
+		var doCheck = () => {
+			Activity.checkUsersInAllGuilds(client.guilds, guildsData);
+			setTimeout(() => doCheck, waitMs);
+		};
+
+		doCheck();
 	});
 
 	client.on("message", (message) => {
