@@ -120,6 +120,7 @@ var Guilds = {
 						message.reply(this.setupSteps[this.currentStepIdx].message);
 					else {
 						client.removeListener("message", handler);
+						message.reply("Setup all done!");
 						doResolve(this.guildData);
 					}
 				}
