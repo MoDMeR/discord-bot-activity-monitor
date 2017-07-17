@@ -111,7 +111,7 @@ var GuildSetupHelper = class GuildSetupHelper {
 				message: "Please @tag the role you with to use to indicate an 'active' user",
 				action: (message) => {
 					//expect the message to be in the format @<snowflake>
-					this.guildData.activeroleID = message.content.replace(/\D+/g, "");
+					this.guildData.activeRoleID = message.content.replace(/\D+/g, "");
 				}
 			},
 			{
@@ -165,7 +165,7 @@ var GuildSetupHelper = class GuildSetupHelper {
 };
 
 var registerActivity = (client, message) => {
-	let guild = client.guilds.get(message.channel.guild.id);
+	let guild = message.channel.guild;
 	if (guildsData.get(guild.id) && guildsData.get(guild.id).allowRoleAddition) { //check if we're allowed to assign roles as well as remove them in this guild
 		let member = message.member;
 		let activeRole = guild.roles.get(guildsData.get(guild.id).activeRoleID);
