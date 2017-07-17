@@ -15,9 +15,24 @@ Invite the bot to your server [here](https://discordapp.com/oauth2/authorize?cli
 
 ## Configuring the bot
 
-Configuration must be run by the server owner, otherwise it will not work!
-- Use the command `!activitymonitor setup`
-	- The bot must have both *read* and *write* permissions to this channel
+### Permissions:
+
+Required for normal functionality:
+- Manage Roles
+- Read Messages (in the channels you wish the bot to "monitor")
+
+Required for setup only:
+- Send messages
+
+### Configuration
+
+Ensure:
+- The guild owner is the one running the setup
+- The "active" role is *mentionable* for the duration of the setup
+- The bot has *read* and *write* permissions to the channel being used for setup
+
+Steps:
+- Run `!activitymonitor setup` in a channel the bot can *read* and *write* in
 - Respond with the information the bot asks you for, until setup is complete
 
 Example: ![example image](http://i.imgur.com/s60poam.png)
