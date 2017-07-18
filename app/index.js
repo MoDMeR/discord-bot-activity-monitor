@@ -8,19 +8,19 @@ const JsonFile = require("jsonfile");
 const DateDiff = require("date-diff");
 
 //my imports
-const GuildSetupHelper = require("./guild-setup.js");
+const GuildSetupHelper = require("./guild-setup-helper.js");
 const Util = require("./util.js");
 
-//const vars
-const CONFIG_FILE = "./config.json";
-const SAVE_FILE = "./guilds.json";
+//gloabl vars
+const setupHelpers = [];
 
-module.exports = (client) => { //when loaded with require() by an external script, this acts as a kind of "on ready" function
-	var guildsData;
-	var config = require(CONFIG_FILE);
+//when loaded with require() by an external script, this acts as a kind of "on ready" function
+module.exports = (client) => {
+	//load data from file and set up periodic saving back to file
+	let guildsData = FileSystem.existsSync("./guilds.json") ? JsonFile.readFileSync("./guilds.json") : {};
+	setTimeout(() => JsonFile.writeFile("./guilds.json", guildsData, err => Util.dateError(err)), config.saveIntervalSec * 1000);
 
-	guildsData = Guilds.File.loadFromFile(SAVE_FILE); //load saved data from file on start up
-	Guilds.File.setSaveToFileInterval(SAVE_FILE, guildsData, config.saveIntervalSec * 1000); //set up regular file saving
+	const config = require("./config.json");
 
 	//check all the users against the threshold now, and set up a recurring callback to do it again after 24 hours
 	Activity.checkUsersInAllGuilds(client.guilds, guildsData, () => {
@@ -34,9 +34,17 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 	});
 
 	client.on("message", message => {
-		if (message.member.permissions.has("ADMINISTRATOR") && message.member.id !== client.user.id) { //admin only commands
-			if (message.content === config.commands.setup)
-				Guilds.walkThroughGuildSetup(client, message, guildsData);
+		if (message.member.permissions.has("ADMINISTRATOR") && message.member.id !== client.user.id) {
+
+			if (message.content === config.commands.setup && !setupHelpers.find(x => x.guild.id === message.guild.id)) {
+				const helper = new GuildSetupHelper(message);
+				let idx = setupHelpers.push(helper);
+				helper.walkThroughSetup(client, message.channel, message.member).then(guildData => {
+					guildsData[message.guild.id] = guildData;
+					setupHelpers.splice(idx, 1);
+				}).catch(Util.dateError);
+			}
+			
 			else if (message.content === config.commands.purge)
 				Activity.checkUsersInAllGuilds([message.channel.guild], guildsData);
 			else if (message.content === config.commands.registerExisting)
@@ -45,40 +53,6 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 
 		Activity.registerActivity(client, message, guildsData);
 	});
-};
-
-var Guilds = {
-	File: new function () {
-		this.loadFromFile = (saveFile) => {
-			if (FileSystem.existsSync(saveFile))
-				return JsonFile.readFileSync(saveFile);
-			else return {};
-		};
-
-		this.saveToFile = (saveFile, guildsData) => {
-			JsonFile.writeFile(saveFile, guildsData, (err) => { if (err) Util.dateError(err); });
-		};
-
-		this.setSaveToFileInterval = (saveFile, guildsData, intervalMs) => {
-			this.saveToFile(saveFile, guildsData); //save the file
-			setTimeout(() => this.setSaveToFileInterval(saveFile, guildsData, intervalMs), intervalMs); //set up a timeout to save the file again
-		};
-	},
-
-	walkThroughGuildSetup: (client, message, guildsData) => {
-		if (!GuildSetupHelper.isInSetup(message.guild)) {
-			var setupHelper = new GuildSetupHelper(message);
-			setupHelper.doWalkThroughGuildSetup(client, message).then(guildData => {
-				let guildID = message.guild.id;
-				if (guildsData[guildID])
-					guildData.users = guildsData[guildID].users; //extract any existing user data present, ie if we're overwriting existing guild settings
-
-				guildsData[guildID] = guildData;
-
-				Guilds.File.saveToFile(SAVE_FILE, guildsData);
-			}).catch(Util.dateError);
-		}
-	},
 };
 
 var Activity = {
