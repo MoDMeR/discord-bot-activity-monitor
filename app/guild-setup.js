@@ -52,14 +52,14 @@ const setupSteps = [
 		message: "How many days would you like to set the inactive threshold at?",
 		action: (message, guildData) => {
 			//expect the message to be an integer value
-			guildData.inactiveThresholdDays = parseInt(message.content);
+			guildData.inactiveThresholdDays = parseInt(message.content) | 30;
 		}
 	},
 	{
 		message: "Please @tag the role you with to use to indicate an 'active' user",
 		action: (message, guildData) => {
 			//expect the message to be in the format @<snowflake>
-			guildData.activeRoleID = message.content.replace(/\D+/g, "");
+			guildData.activeRoleID = message.content.split(" ")[0].replace(/\D+/g, "");
 		}
 	},
 	{
