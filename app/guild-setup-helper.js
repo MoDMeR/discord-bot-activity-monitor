@@ -39,7 +39,6 @@ const setupSteps = [
 module.exports = class {
 	constructor(message) {
 		this.guild = message.channel.guild;
-		this.currentStepIdx = -1;
 	}
 
 	walkThroughSetup(client, textChannel, member) {
@@ -49,16 +48,17 @@ module.exports = class {
 			const askNext = (() => {
 				let i = 0;
 				return () => {
-					if (i <= setupSteps.length)
+					if (i <= setupSteps.length - 1)
 						//ask in the channel and wait for the promised response before asking the next question
 						Util.ask(client, textChannel, member, setupSteps[i].message).then(response => {
-							setupSteps[i].action(response, responseData);
+							setupSteps[i++].action(response, responseData);
 							askNext();
 						}).catch(reject);
 					else
 						resolve(new GuildData(this.guild.id, responseData.inactiveThresholdDays, responseData.activeRoleID, responseData.allowRoleAddition, responseData.ignoredUserIDs));
 				};
 			})();
+			askNext();
 		});
 	}
 };

@@ -19,7 +19,7 @@ module.exports = {
 				if (responseMessage.channel.id === textChannel.id &&
 					responseMessage.member.id === member.id) {
 					client.removeListener("message", handler);
-					resolve(responseMessage.content);
+					resolve(responseMessage);
 				}
 			};
 

@@ -1,9 +1,7 @@
 //node imports
-const Console = require("console");
 const FileSystem = require("fs");
 
 //external lib imports
-const Discord = require("discord.js");
 const JsonFile = require("jsonfile");
 
 //my imports
@@ -32,10 +30,16 @@ module.exports = (client) => {
 			if (message.content === config.commands.setup && !setupHelpers.find(x => x.guild.id === message.channel.guild.id)) {
 				const helper = new GuildSetupHelper(message);
 				let idx = setupHelpers.push(helper);
-				helper.walkThroughSetup(client, message.channel, message.member).then(guildData => {
-					guildsData[message.channel.guild.id] = guildData;
-					setupHelpers.splice(idx, 1);
-				}).catch(Util.dateError);
+				helper.walkThroughSetup(client, message.channel, message.member)
+					.then(guildData => {
+						guildsData[message.channel.guild.id] = guildData;
+						message.reply("Setup complete!");
+					})
+					.catch(err => {
+						Util.dateError(err);
+						message.reply("An error occured, setup will now terminate");
+					})
+					.then(() => setupHelpers.splice(idx - 1, 1));
 			}
 
 			else if (message.content === config.commands.purge)
@@ -49,7 +53,10 @@ module.exports = (client) => {
 };
 
 const Activity = {
-	checkUsersInAllGuilds: (client, guildsData) => client.guilds.forEach(guild => guildsData[guild.id].checkUsers(client)),
+	checkUsersInAllGuilds: (client, guildsData) => client.guilds.forEach(guild => {
+		const guildData = guildsData[guild.id];
+		if (guildData) guildData.checkUsers(client);
+	}),
 	registerActivity: (guild, message, guildData) => {
 		if (guildData) {
 			let member = message.member;
