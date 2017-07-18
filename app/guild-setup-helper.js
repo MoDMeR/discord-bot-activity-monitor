@@ -6,7 +6,7 @@ const setupSteps = [
 		message: "How many days would you like to set the inactive threshold at?",
 		action: (message, responseData) => {
 			//expect the message to be an integer value
-			responseData.inactiveThresholdDays = parseInt(message.content) | 30;
+			responseData.inactiveThresholdDays = parseInt(message.content) || 30;
 		}
 	},
 	{
@@ -41,7 +41,7 @@ module.exports = class {
 		this.guild = message.channel.guild;
 	}
 
-	walkThroughSetup(client, textChannel, member) {
+	walkThroughSetup(client, textChannel, member, existingUsers) {
 		return new Promise((resolve, reject) => {
 			var responseData = {};
 			//use a closure to count up the steps
@@ -55,7 +55,7 @@ module.exports = class {
 							askNext();
 						}).catch(reject);
 					else
-						resolve(new GuildData(this.guild.id, responseData.inactiveThresholdDays, responseData.activeRoleID, responseData.allowRoleAddition, responseData.ignoredUserIDs));
+						resolve(new GuildData(this.guild.id, responseData.inactiveThresholdDays, responseData.activeRoleID, existingUsers || {}, responseData.allowRoleAddition, responseData.ignoredUserIDs));
 				};
 			})();
 			askNext();

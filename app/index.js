@@ -31,7 +31,8 @@ module.exports = (client) => {
 			if (message.content === config.commands.setup && !setupHelpers.find(x => x.guild.id === message.channel.guild.id)) {
 				const helper = new GuildSetupHelper(message);
 				let idx = setupHelpers.push(helper);
-				helper.walkThroughSetup(client, message.channel, message.member)
+				const existingUsers = guildsData[message.channel.guild.id] ? guildsData[message.channel.guild.id].users : null;
+				helper.walkThroughSetup(client, message.channel, message.member, existingUsers)
 					.then(guildData => {
 						guildsData[message.channel.guild.id] = guildData;
 						writeFile(guildsData);
