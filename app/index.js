@@ -38,11 +38,8 @@ module.exports = (client) => {
 						writeFile(guildsData);
 						message.reply("Setup complete!");
 					})
-					.catch(err => {
-						Util.dateError(err);
-						message.reply("An error occured, setup will now terminate");
-					})
-					.then(() => setupHelpers.splice(idx - 1, 1));
+					.catch(Util.dateError)
+					.then(() => setupHelpers.splice(idx - 1, 1))
 			}
 
 			else if (message.content === config.commands.purge) {
@@ -79,7 +76,7 @@ const Activity = {
 				let activeRole = guild.roles.get(guildData.activeRoleID);
 
 				//if the member doesn't already have the active role, and they aren't in the list of ignored IDs, give it to them
-				if (!member.roles.get(activeRole.id) && !guildData.ignoredUserIDs.includes(message.member.id))
+				if (activeRole && !member.roles.get(activeRole.id) && !guildData.ignoredUserIDs.includes(message.member.id))
 					member.addRole(activeRole).catch(Util.dateError);
 			}
 		}
