@@ -1,5 +1,11 @@
 const Discord = require("discord.js");
+const Util = require("./app/util.js");
+
 const client = new Discord.Client();
+
+process.on("uncaughtException", (err) => {
+	Util.dateError(err);
+});
 
 client.login(require("./token.json").token);
 

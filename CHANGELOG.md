@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.0.1
+
+### Updated
+
+- Any administrator can now perform the setup
+
+### Fixed
+
+- Fixed issue where guild could enter setup multiple times
+- Fixed a couple of errors that caused the bot to crash when it should have just logged them
+
 ## v2.0.0
 
 ### Updated

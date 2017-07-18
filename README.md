@@ -30,6 +30,7 @@ Ensure:
 - The guild owner is the one running the setup
 - The "active" role is *mentionable* for the duration of the setup
 - The bot has *read* and *write* permissions to the channel being used for setup
+- The bot's role is higher in the list than the 'active' role
 
 Steps:
 - Run `!activitymonitor setup` in a channel the bot can *read* and *write* in

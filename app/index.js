@@ -7,6 +7,10 @@ const Discord = require("discord.js");
 const JsonFile = require("jsonfile");
 const DateDiff = require("date-diff");
 
+//my imports
+const GuildSetupHelper = require("./guild-setup.js");
+const Util = require("./util.js");
+
 //const vars
 const CONFIG_FILE = "./config.json";
 const SAVE_FILE = "./guilds.json";
@@ -29,8 +33,9 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 		doCheck();
 	});
 
-	client.on("message", (message) => {
-		if (message.member.id === message.guild.ownerID) { //owner only commands
+	client.on("message", message => {
+		// message.reply(message.member.permissions.has("ADMINISTRATOR"));
+		if (message.member.permissions.has("ADMINISTRATOR")) { //admin only commands
 			if (message.content === config.commands.setup)
 				Guilds.walkThroughGuildSetup(client, message, guildsData);
 			else if (message.content === config.commands.purge)
@@ -52,7 +57,7 @@ var Guilds = {
 		};
 
 		this.saveToFile = (saveFile, guildsData) => {
-			JsonFile.writeFile(saveFile, guildsData, (err) => { if (err) Console.dateError(err); });
+			JsonFile.writeFile(saveFile, guildsData, (err) => { if (err) Util.dateError(err); });
 		};
 
 		this.setSaveToFileInterval = (saveFile, guildsData, intervalMs) => {
@@ -61,89 +66,19 @@ var Guilds = {
 		};
 	},
 
-	SetupHelper: class {
-		constructor(message) {
-			this.guild = message.channel.guild;
-			this.guildData = { users: {} };
-			this.currentStepIdx = -1;
-
-			this.setupSteps = [
-				{
-					message: "How many days would you like to set the inactive threshold at?",
-					action: (message) => {
-						//expect the message to be an integer value
-						this.guildData.inactiveThresholdDays = parseInt(message.content);
-					}
-				},
-				{
-					message: "Please @tag the role you with to use to indicate an 'active' user",
-					action: (message) => {
-						//expect the message to be in the format @<snowflake>
-						this.guildData.activeRoleID = message.content.replace(/\D+/g, "");
-					}
-				},
-				{
-					message: "Would you like the bot to *add* people to this role if they send a message and *don't* already have it? (yes/no)",
-					action: (message) => {
-						//expect the message to be "yes" or "no"
-						this.guildData.allowRoleAddition = message.content.toLowerCase() === "yes";
-					}
-				},
-				{
-					message: "Please @tag all the roles you wish to be *exempt* from role removal (type 'none' if none)",
-					action: (message) => {
-						//expect the message to either be "none" or in the format '@<snowflake> @<snowflake> @<snowflake>'
-						this.guildData.ignoredUserIDs = [];
-						if (message.content !== "none") {
-							var snowflakes = message.content.split(" ");
-							snowflakes.forEach(x => this.guildData.ignoredUserIDs.push(x.replace(/\D+/g, "")));
-						}
-					}
-				}
-			];
-		}
-
-		doWalkThroughGuildSetup(client, initialMessage) {
-			var doResolve;
-			var promiseGuild = new Promise((resolve, reject) => {
-				doResolve = resolve;
-			});
-
-			var handler = (message) => {
-				if (message.member.id === message.guild.ownerID) {
-					if (this.currentStepIdx >= 0)
-						this.setupSteps[this.currentStepIdx].action(message);
-
-					this.currentStepIdx++;
-
-					if (this.currentStepIdx <= this.setupSteps.length - 1)
-						message.reply(this.setupSteps[this.currentStepIdx].message);
-					else {
-						client.removeListener("message", handler);
-						message.reply("Setup all done!");
-						doResolve(this.guildData);
-					}
-				}
-			};
-
-			client.on("message", handler);
-			handler(initialMessage);
-
-			return promiseGuild;
-		}
-	},
-
 	walkThroughGuildSetup: (client, message, guildsData) => {
-		var setupHelper = new Guilds.SetupHelper(message);
-		setupHelper.doWalkThroughGuildSetup(client, message).then(guildData => {
-			let guildID = message.guild.id;
-			if (guildsData[guildID])
-				guildData.users = guildsData[guildID].users; //extract any existing user data present, ie if we're overwriting existing guild settings
+		if (!GuildSetupHelper.isInSetup(message.guild)) {
+			var setupHelper = new GuildSetupHelper(message);
+			setupHelper.doWalkThroughGuildSetup(client, message).then(guildData => {
+				let guildID = message.guild.id;
+				if (guildsData[guildID])
+					guildData.users = guildsData[guildID].users; //extract any existing user data present, ie if we're overwriting existing guild settings
 
-			guildsData[guildID] = guildData;
+				guildsData[guildID] = guildData;
 
-			Guilds.File.saveToFile(SAVE_FILE, guildsData);
-		});
+				Guilds.File.saveToFile(SAVE_FILE, guildsData);
+			}).catch(Util.dateError);
+		}
 	},
 };
 
@@ -170,7 +105,7 @@ var Activity = {
 					let diff = new DateDiff(now, Date.parse(activeDate));
 
 					if (diff.days() > guildData.inactiveThresholdDays) {
-						guild.members.get(userID).removeRole(activeRole);
+						guild.members.get(userID).removeRole(activeRole).catch(Util.dateError);
 						delete guildData.users[userID]; //un-save the user's last active time, as they don't matter anymore
 					}
 				});
@@ -192,7 +127,7 @@ var Activity = {
 
 				//if the member doesn't already have the active role, and they aren't in the list of ignored IDs, give it to them
 				if (!member.roles.get(activeRole.id) && !guildData.ignoredUserIDs.includes(message.member.id))
-					member.addRole(activeRole);
+					member.addRole(activeRole).catch(Util.dateError);
 			}
 		}
 	},
@@ -203,9 +138,4 @@ var Activity = {
 				guildData.users[member.id] = new Date();
 		});
 	}
-};
-
-Console.dateError = (...args) => {
-	args = ["[", new Date().toUTCString(), "]"].concat(args);
-	Console.error.apply(this, args);
 };
