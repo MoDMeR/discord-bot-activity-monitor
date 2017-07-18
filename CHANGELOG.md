@@ -2,6 +2,14 @@
 
 ## v2.0.1
 
+### Fixed
+
+- Bot able to get stuck in setup mode forever
+- Bot replying to itself if it has admin permissions
+- Incorrect reply formats during setup causing various problems
+
+## v2.0.1
+
 ### Updated
 
 - Any administrator can now perform the setup

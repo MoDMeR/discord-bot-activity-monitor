@@ -6,8 +6,8 @@ module.exports = class {
 		this.guild = message.channel.guild;
 		this.guildData = { users: {} };
 		this.currentStepIdx = -1;
-
 		inSetup.push(message.guild.id); //record that this guild is currently in setup mode
+		this.setupIdx = inSetup.length - 1;
 	}
 
 	static isInSetup(guild) { return inSetup.includes(guild.id); }
@@ -19,7 +19,7 @@ module.exports = class {
 		});
 
 		var handler = (message) => {
-			if (message.member.permissions.has("ADMINISTRATOR")) {
+			if (message.member.permissions.has("ADMINISTRATOR") && message.member.id !== client.user.id) {
 				if (this.currentStepIdx >= 0)
 					setupSteps[this.currentStepIdx].action(message, this.guildData);
 
@@ -30,6 +30,7 @@ module.exports = class {
 				else {
 					client.removeListener("message", handler);
 					message.reply("Setup all done!").catch(Util.dateError);
+					inSetup.splice(this.setupIdx, 1);
 					doResolve(this.guildData);
 				}
 			}
@@ -51,14 +52,14 @@ const setupSteps = [
 		message: "How many days would you like to set the inactive threshold at?",
 		action: (message, guildData) => {
 			//expect the message to be an integer value
-			guildData.inactiveThresholdDays = parseInt(message.content);
+			guildData.inactiveThresholdDays = parseInt(message.content) | 30;
 		}
 	},
 	{
 		message: "Please @tag the role you with to use to indicate an 'active' user",
 		action: (message, guildData) => {
 			//expect the message to be in the format @<snowflake>
-			guildData.activeRoleID = message.content.replace(/\D+/g, "");
+			guildData.activeRoleID = message.content.split(" ")[0].replace(/\D+/g, "");
 		}
 	},
 	{

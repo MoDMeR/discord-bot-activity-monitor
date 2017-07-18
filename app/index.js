@@ -34,8 +34,7 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 	});
 
 	client.on("message", message => {
-		// message.reply(message.member.permissions.has("ADMINISTRATOR"));
-		if (message.member.permissions.has("ADMINISTRATOR")) { //admin only commands
+		if (message.member.permissions.has("ADMINISTRATOR") && message.member.id !== client.user.id) { //admin only commands
 			if (message.content === config.commands.setup)
 				Guilds.walkThroughGuildSetup(client, message, guildsData);
 			else if (message.content === config.commands.purge)
@@ -95,7 +94,7 @@ var Activity = {
 		//check each user against that guild's threshold
 		clientGuilds.forEach(guild => {
 			let guildData = guildsData[guild.id];
-			if (guildData && guildData.users && guildData.activeRoleID) {
+			if (guildData && guildData.users && guildData.activeRoleID && guildData.activeRoleID.length > 0) {
 				let activeRole = guild.roles.get(guildData.activeRoleID);
 
 				//iterate over all the users we have *stored data* for, calculate the time difference since they were last active
@@ -122,7 +121,7 @@ var Activity = {
 
 			guildData.users[member.id] = new Date(); //store now as the latest date this user has interacted
 
-			if (guildData.allowRoleAddition) { //check if we're allowed to assign roles as well as remove them in this guild
+			if (guildData.allowRoleAddition && guildData.activeRoleID && guildData.activeRoleID.length > 0) { //check if we're allowed to assign roles as well as remove them in this guild
 				let activeRole = guild.roles.get(guildData.activeRoleID);
 
 				//if the member doesn't already have the active role, and they aren't in the list of ignored IDs, give it to them
