@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.1.0
+
+### Updated
+
+- Refactored a bunch of code for stability improvements
+
+### Fixed
+
+- Fixed some issues with setup not running properly
+
 ## v2.0.1
 
 ### Fixed

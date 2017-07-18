@@ -1,121 +1,75 @@
 //node imports
-const Console = require("console");
 const FileSystem = require("fs");
 
 //external lib imports
-const Discord = require("discord.js");
 const JsonFile = require("jsonfile");
-const DateDiff = require("date-diff");
 
 //my imports
-const GuildSetupHelper = require("./guild-setup.js");
+const GuildSetupHelper = require("./guild-setup-helper.js");
+const GuildData = require("./guild-data.js");
 const Util = require("./util.js");
 
-//const vars
-const CONFIG_FILE = "./config.json";
+//gloabl vars
 const SAVE_FILE = "./guilds.json";
+const setupHelpers = [];
 
-module.exports = (client) => { //when loaded with require() by an external script, this acts as a kind of "on ready" function
-	var guildsData;
-	var config = require(CONFIG_FILE);
+//when loaded with require() by an external script, this acts as a kind of "on ready" function
+module.exports = (client) => {
+	const config = require("./config.json");
 
-	guildsData = Guilds.File.loadFromFile(SAVE_FILE); //load saved data from file on start up
-	Guilds.File.setSaveToFileInterval(SAVE_FILE, guildsData, config.saveIntervalSec * 1000); //set up regular file saving
+	//load data from file and set up periodic saving back to file
+	const guildsData = FileSystem.existsSync(SAVE_FILE) ? fromJSON(JsonFile.readFileSync(SAVE_FILE)) : {};
+	setInterval(() => writeFile(guildsData), config.saveIntervalSec * 1000);
 
-	//check all the users against the threshold now, and set up a recurring callback to do it again after 24 hours
-	Activity.checkUsersInAllGuilds(client.guilds, guildsData, () => {
-		var waitMs = 1 * 24 * 60 * 60 * 1000; //get 1 day in ms
-		var doCheck = () => {
-			Activity.checkUsersInAllGuilds(client.guilds, guildsData);
-			setTimeout(() => doCheck, waitMs);
-		};
-
-		doCheck();
-	});
+	//check all the guild members against their guild's threshold now, and set up a daily check
+	Activity.checkUsersInAllGuilds(client, guildsData);
+	setInterval(() => Activity.checkUsersInAllGuilds(client, guildsData), 1 * 24 * 60 * 60 * 1000);
 
 	client.on("message", message => {
-		if (message.member.permissions.has("ADMINISTRATOR") && message.member.id !== client.user.id) { //admin only commands
-			if (message.content === config.commands.setup)
-				Guilds.walkThroughGuildSetup(client, message, guildsData);
-			else if (message.content === config.commands.purge)
-				Activity.checkUsersInAllGuilds([message.channel.guild], guildsData);
-			else if (message.content === config.commands.registerExisting)
-				Activity.registerExisting(message.channel.guild, guildsData);
+		if (message.member.permissions.has("ADMINISTRATOR") && message.member.id !== client.user.id) {
+
+			if (message.content === config.commands.setup && !setupHelpers.find(x => x.guild.id === message.channel.guild.id)) {
+				const helper = new GuildSetupHelper(message);
+				let idx = setupHelpers.push(helper);
+				const existingUsers = guildsData[message.channel.guild.id] ? guildsData[message.channel.guild.id].users : null;
+				helper.walkThroughSetup(client, message.channel, message.member, existingUsers)
+					.then(guildData => {
+						guildsData[message.channel.guild.id] = guildData;
+						writeFile(guildsData);
+						message.reply("Setup complete!");
+					})
+					.catch(err => {
+						Util.dateError(err);
+						message.reply("An error occured, setup will now terminate");
+					})
+					.then(() => setupHelpers.splice(idx - 1, 1));
+			}
+
+			else if (message.content === config.commands.purge) {
+				const guildData = guildsData[message.channel.guild.id];
+				if (guildData)
+					guildData.checkUsers(client);
+			}
+			else if (message.content === config.commands.registerExisting) {
+				const guildData = guildsData[message.channel.guild.id];
+				if (guildData)
+					Activity.registerExisting(message.channel.guild, guildData);
+			}
 		}
 
-		Activity.registerActivity(client, message, guildsData);
+		Activity.registerActivity(message.guild, message, guildsData[message.channel.guild.id]);
 	});
 };
 
-var Guilds = {
-	File: new function () {
-		this.loadFromFile = (saveFile) => {
-			if (FileSystem.existsSync(saveFile))
-				return JsonFile.readFileSync(saveFile);
-			else return {};
-		};
-
-		this.saveToFile = (saveFile, guildsData) => {
-			JsonFile.writeFile(saveFile, guildsData, (err) => { if (err) Util.dateError(err); });
-		};
-
-		this.setSaveToFileInterval = (saveFile, guildsData, intervalMs) => {
-			this.saveToFile(saveFile, guildsData); //save the file
-			setTimeout(() => this.setSaveToFileInterval(saveFile, guildsData, intervalMs), intervalMs); //set up a timeout to save the file again
-		};
-	},
-
-	walkThroughGuildSetup: (client, message, guildsData) => {
-		if (!GuildSetupHelper.isInSetup(message.guild)) {
-			var setupHelper = new GuildSetupHelper(message);
-			setupHelper.doWalkThroughGuildSetup(client, message).then(guildData => {
-				let guildID = message.guild.id;
-				if (guildsData[guildID])
-					guildData.users = guildsData[guildID].users; //extract any existing user data present, ie if we're overwriting existing guild settings
-
-				guildsData[guildID] = guildData;
-
-				Guilds.File.saveToFile(SAVE_FILE, guildsData);
-			}).catch(Util.dateError);
+const Activity = {
+	checkUsersInAllGuilds: (client, guildsData) => client.guilds.forEach(guild => {
+		const guildData = guildsData[guild.id];
+		if (guildData) {
+			guildData.checkUsers(client);
+			writeFile(guildsData);
 		}
-	},
-};
-
-var Activity = {
-	/**
-		 * @param {object} clientGuilds client.guilds object from the discord.js client
-		 * @param {object} guildsData data from the guilds.json file
-		 * @param {function} [callback] callback executed once all the users have been checked
-		 */
-	checkUsersInAllGuilds: (clientGuilds, guildsData, callback) => {
-		let now = new Date();
-
-		//iterate over all our guilds and subsequently all of their users
-		//check each user against that guild's threshold
-		clientGuilds.forEach(guild => {
-			let guildData = guildsData[guild.id];
-			if (guildData && guildData.users && guildData.activeRoleID && guildData.activeRoleID.length > 0) {
-				let activeRole = guild.roles.get(guildData.activeRoleID);
-
-				//iterate over all the users we have *stored data* for, calculate the time difference since they were last active
-				//remove the active role from them if they have been inactive for too long
-				Object.keys(guildData.users).forEach(userID => {
-					let activeDate = guildData.users[userID];
-					let diff = new DateDiff(now, Date.parse(activeDate));
-
-					if (diff.days() > guildData.inactiveThresholdDays) {
-						guild.members.get(userID).removeRole(activeRole).catch(Util.dateError);
-						delete guildData.users[userID]; //un-save the user's last active time, as they don't matter anymore
-					}
-				});
-			}
-		});
-
-		if (callback)
-			callback();
-	},
-	registerActivity: (client, message, guildsData) => {
-		let guild = message.channel.guild, guildData = guildsData[guild.id];
+	}),
+	registerActivity: (guild, message, guildData) => {
 		if (guildData) {
 			let member = message.member;
 
@@ -130,11 +84,21 @@ var Activity = {
 			}
 		}
 	},
-	registerExisting: (clientGuild, guildsData) => {
-		let guildData = guildsData[clientGuild.id];
-		clientGuild.roles.get(guildData.activeRoleID).members.forEach(member => {
+	registerExisting: (guild, guildData) => {
+		guild.roles.get(guildData.activeRoleID).members.forEach(member => {
 			if (!guildData.ignoredUserIDs.includes(member.id))
 				guildData.users[member.id] = new Date();
 		});
 	}
 };
+
+function writeFile(guildsData) {
+	JsonFile.writeFile(SAVE_FILE, guildsData, err => { if (err) Util.dateError(err); });
+}
+
+function fromJSON(json) {
+	Object.keys(json).forEach(guildID => {
+		json[guildID] = new GuildData().fromJSON(json[guildID]);
+	});
+	return json;
+}
