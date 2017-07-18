@@ -47,7 +47,7 @@ var Guilds = {
 	File: new function () {
 		this.loadFromFile = (saveFile) => {
 			if (FileSystem.existsSync(saveFile))
-				return JsonFile.readFileSync(saveFile);
+				return JsonFile.readFileSync(saveFile, (err) => Console.dateError(err));
 			else return {};
 		};
 
@@ -117,10 +117,10 @@ var Guilds = {
 					this.currentStepIdx++;
 
 					if (this.currentStepIdx <= this.setupSteps.length - 1)
-						message.reply(this.setupSteps[this.currentStepIdx].message);
+						message.reply(this.setupSteps[this.currentStepIdx].message).catch(Console.dateError);
 					else {
 						client.removeListener("message", handler);
-						message.reply("Setup all done!");
+						message.reply("Setup all done!").catch(Console.dateError);
 						doResolve(this.guildData);
 					}
 				}
@@ -143,7 +143,7 @@ var Guilds = {
 			guildsData[guildID] = guildData;
 
 			Guilds.File.saveToFile(SAVE_FILE, guildsData);
-		});
+		}).catch(Console.dateError);
 	},
 };
 
@@ -170,7 +170,7 @@ var Activity = {
 					let diff = new DateDiff(now, Date.parse(activeDate));
 
 					if (diff.days() > guildData.inactiveThresholdDays) {
-						guild.members.get(userID).removeRole(activeRole);
+						guild.members.get(userID).removeRole(activeRole).catch(Console.dateError);
 						delete guildData.users[userID]; //un-save the user's last active time, as they don't matter anymore
 					}
 				});
@@ -192,7 +192,7 @@ var Activity = {
 
 				//if the member doesn't already have the active role, and they aren't in the list of ignored IDs, give it to them
 				if (!member.roles.get(activeRole.id) && !guildData.ignoredUserIDs.includes(message.member.id))
-					member.addRole(activeRole);
+					member.addRole(activeRole).catch(Console.dateError);
 			}
 		}
 	},
