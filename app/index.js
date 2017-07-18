@@ -7,6 +7,9 @@ const Discord = require("discord.js");
 const JsonFile = require("jsonfile");
 const DateDiff = require("date-diff");
 
+//my imports
+const GuildSetupHelper = require("./guild-setup.js");
+
 //const vars
 const CONFIG_FILE = "./config.json";
 const SAVE_FILE = "./guilds.json";
@@ -47,7 +50,7 @@ var Guilds = {
 	File: new function () {
 		this.loadFromFile = (saveFile) => {
 			if (FileSystem.existsSync(saveFile))
-				return JsonFile.readFileSync(saveFile, (err) => Console.dateError(err));
+				return JsonFile.readFileSync(saveFile);
 			else return {};
 		};
 
@@ -61,85 +64,10 @@ var Guilds = {
 		};
 	},
 
-	SetupHelper: class {
-		constructor(message) {
-			this.guild = message.channel.guild;
-			this.guildData = { users: {} };
-			this.currentStepIdx = -1;
-
-			this.setupSteps = [
-				{
-					message: "How many days would you like to set the inactive threshold at?",
-					action: (message) => {
-						//expect the message to be an integer value
-						this.guildData.inactiveThresholdDays = parseInt(message.content);
-					}
-				},
-				{
-					message: "Please @tag the role you with to use to indicate an 'active' user",
-					action: (message) => {
-						//expect the message to be in the format @<snowflake>
-						this.guildData.activeRoleID = message.content.replace(/\D+/g, "");
-					}
-				},
-				{
-					message: "Would you like the bot to *add* people to this role if they send a message and *don't* already have it? (yes/no)",
-					action: (message) => {
-						//expect the message to be "yes" or "no"
-						this.guildData.allowRoleAddition = message.content.toLowerCase() === "yes";
-					}
-				},
-				{
-					message: "Please @tag all the roles you wish to be *exempt* from role removal (type 'none' if none)",
-					action: (message) => {
-						//expect the message to either be "none" or in the format '@<snowflake> @<snowflake> @<snowflake>'
-						this.guildData.ignoredUserIDs = [];
-						if (message.content !== "none") {
-							var snowflakes = message.content.split(" ");
-							snowflakes.forEach(x => this.guildData.ignoredUserIDs.push(x.replace(/\D+/g, "")));
-						}
-					}
-				}
-			];
-		}
-
-		doWalkThroughGuildSetup(client, initialMessage) {
-			var doResolve;
-			var promiseGuild = new Promise((resolve, reject) => {
-				doResolve = resolve;
-			});
-
-			var handler = (message) => {
-				if (message.member.id === message.guild.ownerID) {
-					if (this.currentStepIdx >= 0)
-						this.setupSteps[this.currentStepIdx].action(message);
-
-					this.currentStepIdx++;
-
-					if (this.currentStepIdx <= this.setupSteps.length - 1)
-						message.reply(this.setupSteps[this.currentStepIdx].message).catch(Console.dateError);
-					else {
-						client.removeListener("message", handler);
-						message.reply("Setup all done!").catch(Console.dateError);
-						doResolve(this.guildData);
-					}
-				}
-			};
-
-			client.on("message", handler);
-			handler(initialMessage);
-
-			return promiseGuild;
-		}
-	},
-
-	inSetup: [],
-
 	walkThroughGuildSetup: (client, message, guildsData) => {
-		if (!Guilds.inSetup.includes(message.guild.id)) {
-			Guilds.inSetup.push(message.guild.id);
+		if (!GuildSetupHelper.isInSetup(message.guild)) {
 			let idx = Guilds.inSetup.length;
-			var setupHelper = new Guilds.SetupHelper(message);
+			var setupHelper = new GuildSetupHelper(message);
 			setupHelper.doWalkThroughGuildSetup(client, message).then(guildData => {
 				let guildID = message.guild.id;
 				if (guildsData[guildID])
@@ -148,7 +76,6 @@ var Guilds = {
 				guildsData[guildID] = guildData;
 
 				Guilds.File.saveToFile(SAVE_FILE, guildsData);
-				Guilds.inSetup.splice(idx, 1);
 			}).catch(Console.dateError);
 		}
 	},
