@@ -133,17 +133,24 @@ var Guilds = {
 		}
 	},
 
+	inSetup: [],
+
 	walkThroughGuildSetup: (client, message, guildsData) => {
-		var setupHelper = new Guilds.SetupHelper(message);
-		setupHelper.doWalkThroughGuildSetup(client, message).then(guildData => {
-			let guildID = message.guild.id;
-			if (guildsData[guildID])
-				guildData.users = guildsData[guildID].users; //extract any existing user data present, ie if we're overwriting existing guild settings
+		if (!Guilds.inSetup.includes(message.guild.id)) {
+			Guilds.inSetup.push(message.guild.id);
+			let idx = Guilds.inSetup.length;
+			var setupHelper = new Guilds.SetupHelper(message);
+			setupHelper.doWalkThroughGuildSetup(client, message).then(guildData => {
+				let guildID = message.guild.id;
+				if (guildsData[guildID])
+					guildData.users = guildsData[guildID].users; //extract any existing user data present, ie if we're overwriting existing guild settings
 
-			guildsData[guildID] = guildData;
+				guildsData[guildID] = guildData;
 
-			Guilds.File.saveToFile(SAVE_FILE, guildsData);
-		}).catch(Console.dateError);
+				Guilds.File.saveToFile(SAVE_FILE, guildsData);
+				Guilds.inSetup.splice(idx, 1);
+			}).catch(Console.dateError);
+		}
 	},
 };
 
