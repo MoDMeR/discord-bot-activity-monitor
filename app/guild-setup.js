@@ -6,8 +6,8 @@ module.exports = class {
 		this.guild = message.channel.guild;
 		this.guildData = { users: {} };
 		this.currentStepIdx = -1;
-
 		inSetup.push(message.guild.id); //record that this guild is currently in setup mode
+		this.setupIdx = inSetup.length - 1;
 	}
 
 	static isInSetup(guild) { return inSetup.includes(guild.id); }
@@ -30,6 +30,7 @@ module.exports = class {
 				else {
 					client.removeListener("message", handler);
 					message.reply("Setup all done!").catch(Util.dateError);
+					inSetup.splice(this.setupIdx, 1);
 					doResolve(this.guildData);
 				}
 			}
