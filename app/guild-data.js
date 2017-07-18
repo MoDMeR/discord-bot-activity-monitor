@@ -21,17 +21,20 @@ module.exports = class GuildData {
 	}
 
 	checkUsers(client) {
-		const now = new Date();
+		const guild = client.guilds.get(this.id);
+		if (guild) {
+			const now = new Date();
 
-		Object.keys(this.users).forEach(userID => {
-			const activeDate = this.users[userID];
-			const diff = new DateDiff(now, Date.parse(activeDate));
+			Object.keys(this.users).forEach(userID => {
+				const activeDate = this.users[userID];
+				const diff = new DateDiff(now, Date.parse(activeDate));
 
-			if (diff.days() > this.inactiveThresholdDays) {
-				client.guilds.get(this.id).members.get(userID).removeRole(this.activeRoleID).catch(Util.dateError);
-				delete this.users[userID]; //un-save the user's last active time, as they don't matter anymore
-			}
-		});
+				if (diff.days() > this.inactiveThresholdDays) {
+					guild.members.get(userID).removeRole(this.activeRoleID).catch(Util.dateError);
+					delete this.users[userID]; //un-save the user's last active time, as they don't matter anymore
+				}
+			});
+		}
 	}
 
 	fromJSON(data) {
