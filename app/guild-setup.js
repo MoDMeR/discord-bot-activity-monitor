@@ -10,7 +10,7 @@ module.exports = class {
 		inSetup.push(message.guild.id); //record that this guild is currently in setup mode
 	}
 
-	static isInSetup(guild){ return inSetup.includes(guild.id); }
+	static isInSetup(guild) { return inSetup.includes(guild.id); }
 
 	doWalkThroughGuildSetup(client, initialMessage) {
 		var doResolve;
@@ -21,7 +21,7 @@ module.exports = class {
 		var handler = (message) => {
 			if (message.member.permissions.has("ADMINISTRATOR")) {
 				if (this.currentStepIdx >= 0)
-					setupSteps[this.currentStepIdx].action(message);
+					setupSteps[this.currentStepIdx].action(message, this.guildData);
 
 				this.currentStepIdx++;
 
@@ -49,39 +49,34 @@ const inSetup = [
 const setupSteps = [
 	{
 		message: "How many days would you like to set the inactive threshold at?",
-		action: (message) => {
+		action: (message, guildData) => {
 			//expect the message to be an integer value
-			this.guildData.inactiveThresholdDays = parseInt(message.content);
+			guildData.inactiveThresholdDays = parseInt(message.content);
 		}
 	},
 	{
 		message: "Please @tag the role you with to use to indicate an 'active' user",
-		action: (message) => {
+		action: (message, guildData) => {
 			//expect the message to be in the format @<snowflake>
-			this.guildData.activeRoleID = message.content.replace(/\D+/g, "");
+			guildData.activeRoleID = message.content.replace(/\D+/g, "");
 		}
 	},
 	{
 		message: "Would you like the bot to *add* people to this role if they send a message and *don't* already have it? (yes/no)",
-		action: (message) => {
+		action: (message, guildData) => {
 			//expect the message to be "yes" or "no"
-			this.guildData.allowRoleAddition = message.content.toLowerCase() === "yes";
+			guildData.allowRoleAddition = message.content.toLowerCase() === "yes";
 		}
 	},
 	{
 		message: "Please @tag all the roles you wish to be *exempt* from role removal (type 'none' if none)",
-		action: (message) => {
+		action: (message, guildData) => {
 			//expect the message to either be "none" or in the format '@<snowflake> @<snowflake> @<snowflake>'
-			this.guildData.ignoredUserIDs = [];
+			guildData.ignoredUserIDs = [];
 			if (message.content !== "none") {
 				var snowflakes = message.content.split(" ");
-				snowflakes.forEach(x => this.guildData.ignoredUserIDs.push(x.replace(/\D+/g, "")));
+				snowflakes.forEach(x => guildData.ignoredUserIDs.push(x.replace(/\D+/g, "")));
 			}
 		}
 	}
 ];
-
-Console.dateError = (...args) => {
-	args = ["[", new Date().toUTCString(), "]"].concat(args);
-	Console.error.apply(this, args);
-};
