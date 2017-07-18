@@ -18,7 +18,7 @@ module.exports = (client) => {
 
 	//load data from file and set up periodic saving back to file
 	const guildsData = FileSystem.existsSync("./guilds.json") ? fromJSON(JsonFile.readFileSync("./guilds.json")) : {};
-	setInterval(() => JsonFile.writeFile("./guilds.json", guildsData, err => Util.dateError(err)), config.saveIntervalSec * 1000);
+	setInterval(() => JsonFile.writeFile("./guilds.json", guildsData, err => { if (err) Util.dateError(err); }), config.saveIntervalSec * 1000);
 
 	//check all the guild members against their guild's threshold now, and set up a daily check
 	Activity.checkUsersInAllGuilds(client, guildsData);

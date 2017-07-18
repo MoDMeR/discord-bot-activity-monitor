@@ -12,3 +12,7 @@ client.login(require("./token.json").token);
 client.on("ready", () => {
 	require("./app/index.js")(client);
 });
+
+client.on("disconnect", eventData => {
+	Util.dateError(eventData.code, eventData.reason);
+});

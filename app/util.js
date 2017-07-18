@@ -1,9 +1,13 @@
 const Console = require("console");
+const SimpleFileWriter = require("simple-file-writer");
+
+const logWriter = new SimpleFileWriter("./log");
 
 module.exports = {
 	dateError: (...args) => {
-		args = ["[", new Date().toUTCString(), "]"].concat(args);
+		args = ["[", new Date().toUTCString(), "] "].concat(args);
 		Console.error.apply(this, args);
+		logWriter.write(args.join("") + "\n");
 	},
 
 	/**
