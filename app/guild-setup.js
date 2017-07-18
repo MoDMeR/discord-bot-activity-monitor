@@ -19,7 +19,7 @@ module.exports = class {
 		});
 
 		var handler = (message) => {
-			if (message.member.permissions.has("ADMINISTRATOR")) {
+			if (message.member.permissions.has("ADMINISTRATOR") && message.member.id !== client.user.id) {
 				if (this.currentStepIdx >= 0)
 					setupSteps[this.currentStepIdx].action(message, this.guildData);
 

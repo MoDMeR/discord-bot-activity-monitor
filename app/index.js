@@ -34,8 +34,7 @@ module.exports = (client) => { //when loaded with require() by an external scrip
 	});
 
 	client.on("message", message => {
-		// message.reply(message.member.permissions.has("ADMINISTRATOR"));
-		if (message.member.permissions.has("ADMINISTRATOR")) { //admin only commands
+		if (message.member.permissions.has("ADMINISTRATOR") && message.member.id !== client.user.id) { //admin only commands
 			if (message.content === config.commands.setup)
 				Guilds.walkThroughGuildSetup(client, message, guildsData);
 			else if (message.content === config.commands.purge)
