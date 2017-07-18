@@ -35,6 +35,6 @@ module.exports = class GuildData {
 	}
 
 	fromJSON(data) {
-		Object.assign(this, data);
+		return Object.assign(this, data);
 	}
 };
