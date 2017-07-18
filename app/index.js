@@ -9,6 +9,7 @@ const DateDiff = require("date-diff");
 
 //my imports
 const GuildSetupHelper = require("./guild-setup.js");
+const Util = require("./util.js");
 
 //const vars
 const CONFIG_FILE = "./config.json";
@@ -56,7 +57,7 @@ var Guilds = {
 		};
 
 		this.saveToFile = (saveFile, guildsData) => {
-			JsonFile.writeFile(saveFile, guildsData, (err) => { if (err) Console.dateError(err); });
+			JsonFile.writeFile(saveFile, guildsData, (err) => { if (err) Util.dateError(err); });
 		};
 
 		this.setSaveToFileInterval = (saveFile, guildsData, intervalMs) => {
@@ -67,7 +68,6 @@ var Guilds = {
 
 	walkThroughGuildSetup: (client, message, guildsData) => {
 		if (!GuildSetupHelper.isInSetup(message.guild)) {
-			let idx = Guilds.inSetup.length;
 			var setupHelper = new GuildSetupHelper(message);
 			setupHelper.doWalkThroughGuildSetup(client, message).then(guildData => {
 				let guildID = message.guild.id;
@@ -77,7 +77,7 @@ var Guilds = {
 				guildsData[guildID] = guildData;
 
 				Guilds.File.saveToFile(SAVE_FILE, guildsData);
-			}).catch(Console.dateError);
+			}).catch(Util.dateError);
 		}
 	},
 };
@@ -105,7 +105,7 @@ var Activity = {
 					let diff = new DateDiff(now, Date.parse(activeDate));
 
 					if (diff.days() > guildData.inactiveThresholdDays) {
-						guild.members.get(userID).removeRole(activeRole).catch(Console.dateError);
+						guild.members.get(userID).removeRole(activeRole).catch(Util.dateError);
 						delete guildData.users[userID]; //un-save the user's last active time, as they don't matter anymore
 					}
 				});
@@ -127,7 +127,7 @@ var Activity = {
 
 				//if the member doesn't already have the active role, and they aren't in the list of ignored IDs, give it to them
 				if (!member.roles.get(activeRole.id) && !guildData.ignoredUserIDs.includes(message.member.id))
-					member.addRole(activeRole).catch(Console.dateError);
+					member.addRole(activeRole).catch(Util.dateError);
 			}
 		}
 	},
@@ -138,9 +138,4 @@ var Activity = {
 				guildData.users[member.id] = new Date();
 		});
 	}
-};
-
-Console.dateError = (...args) => {
-	args = ["[", new Date().toUTCString(), "]"].concat(args);
-	Console.error.apply(this, args);
 };

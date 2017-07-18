@@ -1,4 +1,5 @@
 const Console = require("console");
+const Util = require("./util.js");
 
 module.exports = class {
 	constructor(message) {
@@ -25,10 +26,10 @@ module.exports = class {
 				this.currentStepIdx++;
 
 				if (this.currentStepIdx <= setupSteps.length - 1)
-					message.reply(setupSteps[this.currentStepIdx].message).catch(Console.dateError);
+					message.reply(setupSteps[this.currentStepIdx].message).catch(Util.dateError);
 				else {
 					client.removeListener("message", handler);
-					message.reply("Setup all done!").catch(Console.dateError);
+					message.reply("Setup all done!").catch(Util.dateError);
 					doResolve(this.guildData);
 				}
 			}
