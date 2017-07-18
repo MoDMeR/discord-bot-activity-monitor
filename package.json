@@ -1,6 +1,6 @@
 {
   "name": "discord-bot-activity-monitor",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "main": "index.js",
   "dependencies": {
     "date-diff": "0.1.3",
