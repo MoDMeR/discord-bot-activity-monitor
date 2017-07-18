@@ -10,6 +10,7 @@ const GuildData = require("./guild-data.js");
 const Util = require("./util.js");
 
 //gloabl vars
+const SAVE_FILE = "./guilds.json";
 const setupHelpers = [];
 
 //when loaded with require() by an external script, this acts as a kind of "on ready" function
@@ -17,8 +18,8 @@ module.exports = (client) => {
 	const config = require("./config.json");
 
 	//load data from file and set up periodic saving back to file
-	const guildsData = FileSystem.existsSync("./guilds.json") ? fromJSON(JsonFile.readFileSync("./guilds.json")) : {};
-	setInterval(() => JsonFile.writeFile("./guilds.json", guildsData, err => { if (err) Util.dateError(err); }), config.saveIntervalSec * 1000);
+	const guildsData = FileSystem.existsSync(SAVE_FILE) ? fromJSON(JsonFile.readFileSync(SAVE_FILE)) : {};
+	setInterval(() => writeFile(guildsData), config.saveIntervalSec * 1000);
 
 	//check all the guild members against their guild's threshold now, and set up a daily check
 	Activity.checkUsersInAllGuilds(client, guildsData);
@@ -33,6 +34,7 @@ module.exports = (client) => {
 				helper.walkThroughSetup(client, message.channel, message.member)
 					.then(guildData => {
 						guildsData[message.channel.guild.id] = guildData;
+						writeFile(guildsData);
 						message.reply("Setup complete!");
 					})
 					.catch(err => {
@@ -42,10 +44,16 @@ module.exports = (client) => {
 					.then(() => setupHelpers.splice(idx - 1, 1));
 			}
 
-			else if (message.content === config.commands.purge)
-				Activity.checkUsersInAllGuilds(client, guildsData);
-			else if (message.content === config.commands.registerExisting)
-				Activity.registerExisting(message.channel.guild, guildsData[message.channel.guild.id]);
+			else if (message.content === config.commands.purge) {
+				const guildData = guildsData[message.channel.guild.id];
+				if (guildData)
+					guildData.checkUsers(client);
+			}
+			else if (message.content === config.commands.registerExisting) {
+				const guildData = guildsData[message.channel.guild.id];
+				if (guildData)
+					Activity.registerExisting(message.channel.guild, guildData);
+			}
 		}
 
 		Activity.registerActivity(message.guild, message, guildsData[message.channel.guild.id]);
@@ -55,7 +63,10 @@ module.exports = (client) => {
 const Activity = {
 	checkUsersInAllGuilds: (client, guildsData) => client.guilds.forEach(guild => {
 		const guildData = guildsData[guild.id];
-		if (guildData) guildData.checkUsers(client);
+		if (guildData) {
+			guildData.checkUsers(client);
+			writeFile(guildsData);
+		}
 	}),
 	registerActivity: (guild, message, guildData) => {
 		if (guildData) {
@@ -80,9 +91,13 @@ const Activity = {
 	}
 };
 
-const fromJSON = json => {
+function writeFile(guildsData) {
+	JsonFile.writeFile(SAVE_FILE, guildsData, err => { if (err) Util.dateError(err); });
+}
+
+function fromJSON(json) {
 	Object.keys(json).forEach(guildID => {
 		json[guildID] = new GuildData().fromJSON(json[guildID]);
 	});
 	return json;
-};
+}
